@@ -1,0 +1,173 @@
+{% load static %}
+<!DOCTYPE html>
+<html class="dark" lang="es">
+<head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <title>Datium — Administracion</title>
+    <meta name="description" content="Panel de administracion de Datium.">
+    <link rel="icon" type="image/jpeg" href="{% static 'img/Isotipo modo oscuro.jpeg' %}" id="favicon">
+    <script src="https://cdn.tailwindcss.com/3.4.1?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com" rel="preconnect" />
+    <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;900&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet" />
+    <link rel="stylesheet" href="{% static 'css/styles.css' %}">
+    <link rel="stylesheet" href="{% static 'css/animations.css' %}">
+    <link rel="stylesheet" href="{% static 'css/components.css' %}">
+    <link rel="stylesheet" href="{% static 'css/loading.css' %}">
+    <link rel="stylesheet" href="{% static 'css/layout.css' %}">
+    <script>
+        tailwind.config = { darkMode: "class", theme: { extend: { colors: { primary: "#3b82f6", "background-light": "#f1f5f9", "background-dark": "#0f172a" }, fontFamily: { display: ["Inter", "sans-serif"] } } } };
+    </script>
+    <script>
+        const theme = localStorage.getItem('theme');
+        if (theme === 'dark' || (!theme && window.matchMedia('(prefers-color-scheme: dark)').matches)) document.documentElement.classList.add('dark');
+        else document.documentElement.classList.remove('dark');
+    </script>
+</head>
+<body class="font-display bg-background-light dark:bg-background-dark text-[#111418] dark:text-gray-200 overflow-hidden">
+    <div class="flex h-screen w-full">
+        <aside class="fixed inset-y-0 left-0 z-50 w-64 transform -translate-x-full md:relative md:translate-x-0 transition-transform duration-300 ease-in-out bg-white/70 dark:bg-gray-900/70 backdrop-blur-xl border-r border-gray-200 dark:border-gray-800 flex flex-col justify-between flex-shrink-0 h-full">
+            <div>
+                <div class="p-4 flex justify-center items-center h-48">
+                    <img src="{% static 'img/Datium logo modo oscuro.jpeg' %}" class="h-full w-auto object-contain hidden dark:block hover:scale-105 transition-transform duration-300 p-2" alt="Datium">
+                    <img src="{% static 'img/Datium logo modo claro.jpeg' %}" class="h-full w-auto object-contain block dark:hidden hover:scale-105 transition-transform duration-300 p-2" alt="Datium">
+                </div>
+                <div class="px-6 mb-4">
+                    <div class="text-[10px] font-black uppercase tracking-[0.2em] mb-3 opacity-70" style="color: var(--danger)">Administracion</div>
+                    <button onclick="toggleTema()" class="sidebar-link w-full">
+                        <span class="material-symbols-outlined text-lg" id="tema-icon-admin">dark_mode</span>
+                        <span>Contraste</span>
+                    </button>
+                </div>
+                <nav class="px-4 flex flex-col gap-1">
+                    <button type="button" onclick="showAdminSection('users')" id="nav-admin-users" class="sidebar-link w-full text-left active">
+                        <span class="material-symbols-outlined">group</span>
+                        Usuarios
+                    </button>
+                    <button type="button" onclick="showAdminSection('reports')" id="nav-admin-reports" class="sidebar-link w-full text-left">
+                        <span class="material-symbols-outlined">report</span>
+                        Reportes
+                    </button>
+                </nav>
+            </div>
+            <div class="p-4 border-t border-gray-200 dark:border-gray-800 bg-white/30 dark:bg-gray-900/30 backdrop-blur-md">
+                <a href="profile.html" class="flex items-center gap-3 mb-3 px-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors p-2 cursor-pointer group">
+                    <div class="h-10 w-10 rounded-full bg-gradient-to-br from-red-500 to-rose-600 flex items-center justify-center text-white font-bold text-lg shadow-md ring-2 ring-white dark:ring-gray-800 overflow-hidden">
+                        <span id="userInitial">A</span>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <p id="userName" class="text-sm font-bold truncate text-[#111418] dark:text-white">Administrador</p>
+                        <p id="userEmail" class="text-[10px] text-gray-500 truncate font-black uppercase tracking-widest">Admin</p>
+                    </div>
+                </a>
+                <button onclick="logout()" class="flex items-center gap-2 w-full justify-center px-4 py-2.5 bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-900/30 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/20 rounded-xl text-sm font-bold transition-all">
+                    <span class="material-symbols-outlined text-lg">logout</span>
+                    Cerrar Sesion
+                </button>
+            </div>
+        </aside>
+        <main class="flex-1 h-full overflow-y-auto overflow-x-hidden bg-background-light dark:bg-background-dark relative scroll-smooth p-4 md:p-8 w-full page-transition">
+            <div class="flex items-center justify-between mb-6 md:hidden">
+                <div class="flex items-center gap-3">
+                    <button onclick="toggleSidebar()" class="p-2 rounded-xl bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 shadow-sm">
+                        <span class="material-symbols-outlined">menu</span>
+                    </button>
+                    <span class="font-bold text-lg text-[#111418] dark:text-white">Admin</span>
+                </div>
+            </div>
+            <div class="max-w-7xl mx-auto mb-8">
+                <h1 id="admin-main-title" class="text-2xl md:text-3xl font-black text-[#111418] dark:text-white tracking-tight">Usuarios</h1>
+                <p id="admin-main-sub" class="text-gray-500 dark:text-gray-400 text-sm font-medium mt-1">Gestion de cuentas y acceso.</p>
+            </div>
+            <div class="max-w-7xl mx-auto space-y-8 relative z-10 w-full mb-20" id="admin-section-users">
+                <div class="grid grid-cols-2 gap-4 max-w-lg">
+                    <div class="stat-card">
+                        <div id="stat-total-users" class="text-3xl font-black text-[#111418] dark:text-white mb-1">0</div>
+                        <div class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Usuarios</div>
+                    </div>
+                    <div class="stat-card">
+                        <div id="stat-total-systems" class="text-3xl font-black text-[#111418] dark:text-white mb-1">0</div>
+                        <div class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Sistemas</div>
+                    </div>
+                </div>
+                <div class="surface-card overflow-hidden">
+                    <div class="p-6 border-b border-gray-100 dark:border-gray-800">
+                        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                            <div class="relative w-full max-w-md">
+                                <span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">search</span>
+                                <input type="text" id="userListSearch" placeholder="Buscar usuario..." class="datium-input pl-12">
+                            </div>
+                            <div class="relative group">
+                                <button type="button" class="datium-btn bg-slate-900 text-white hover:bg-black">
+                                    <span class="material-symbols-outlined text-sm">download</span>
+                                    Exportar
+                                </button>
+                                <div class="absolute top-full right-0 mt-2 w-48 bg-white dark:bg-[#1e293b] border border-gray-100 dark:border-gray-800 rounded-xl shadow-2xl overflow-hidden opacity-0 group-hover:opacity-100 -translate-y-2 group-hover:translate-y-0 pointer-events-none group-hover:pointer-events-auto transition-all z-50">
+                                    <button type="button" onclick="exportUsers('csv')" class="w-full px-4 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-gray-500 hover:text-white hover:bg-primary/10 transition-colors border-b border-gray-100 dark:border-gray-800">CSV</button>
+                                    <button type="button" onclick="exportUsers('xlsx')" class="w-full px-4 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-gray-500 hover:text-white hover:bg-primary/10 transition-colors border-b border-gray-100 dark:border-gray-800">Excel</button>
+                                    <button type="button" onclick="exportUsers('pdf')" class="w-full px-4 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-gray-500 hover:text-white hover:bg-primary/10 transition-colors">PDF</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Identidad</th>
+                                    <th>Rol</th>
+                                    <th>Registro</th>
+                                    <th>Estado</th>
+                                    <th class="text-right">Accion</th>
+                                </tr>
+                            </thead>
+                            <tbody id="fullUsersTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div id="admin-section-reports" class="max-w-7xl mx-auto space-y-6 mb-20 hidden">
+                <h2 class="text-xl font-black text-[#111418] dark:text-white">Reportes</h2>
+                <div class="surface-card overflow-hidden">
+                    <table class="data-table w-full">
+                        <thead>
+                            <tr>
+                                <th>Usuario</th>
+                                <th>Titulo</th>
+                                <th>Estado</th>
+                                <th class="text-right">Accion</th>
+                            </tr>
+                        </thead>
+                        <tbody id="adminReportsBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+    <script src="{% static 'js/auth.js' %}"></script>
+    <script src="{% static 'js/app.js' %}"></script>
+    <script src="{% static 'js/admin.js' %}"></script>
+    <script>
+        function showAdminSection(which) {
+            document.getElementById('admin-section-users').classList.toggle('hidden', which !== 'users');
+            document.getElementById('admin-section-reports').classList.toggle('hidden', which !== 'reports');
+            document.getElementById('nav-admin-users').classList.toggle('active', which === 'users');
+            document.getElementById('nav-admin-reports').classList.toggle('active', which === 'reports');
+            const title = document.getElementById('admin-main-title');
+            const sub = document.getElementById('admin-main-sub');
+            if (title && sub) {
+                if (which === 'reports') {
+                    title.textContent = 'Reportes';
+                    sub.textContent = 'Incidencias reportadas por usuarios.';
+                } else {
+                    title.textContent = 'Usuarios';
+                    sub.textContent = 'Gestion de cuentas y acceso.';
+                }
+            }
+        }
+    </script>
+</body>
+</html>

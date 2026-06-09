@@ -1,0 +1,509 @@
+{% load static %}
+<!DOCTYPE html>
+<html class="dark" lang="es">
+
+<head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <title>Datium - Asistente IA</title>
+    <link rel="icon" type="image/jpeg" href="{% static 'img/Isotipo modo oscuro.jpeg' %}" id="favicon">
+    <script src="https://cdn.tailwindcss.com/3.4.1?plugins=forms,container-queries"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <link href="https://fonts.googleapis.com" rel="preconnect" />
+    <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;900&display=swap" rel="stylesheet" />
+    <link
+        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200"
+        rel="stylesheet" />
+    <link rel="stylesheet" href="{% static 'css/styles.css' %}">
+    <link rel="stylesheet" href="{% static 'css/animations.css' %}">
+    <link rel="stylesheet" href="{% static 'css/components.css' %}">
+    <link rel="stylesheet" href="{% static 'css/loading.css' %}">
+    <script>
+        const theme = localStorage.getItem('theme');
+        if (theme === 'dark' || (!theme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
+    </script>
+    <script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#3b82f6",
+                        "background-light": "#f1f5f9",
+                        "background-dark": "#0f172a",
+                    },
+                    fontFamily: {
+                        "display": ["Inter", "sans-serif"]
+                    },
+                },
+            },
+        }
+    </script>
+    <style>
+        @keyframes float {
+
+            0%,
+            100% {
+                transform: translateY(0);
+            }
+
+            50% {
+                transform: translateY(-10px);
+            }
+        }
+
+        .animate-float {
+            animation: float 3s ease-in-out infinite;
+        }
+
+        .chat-bubble-user {
+            background: linear-gradient(135deg, #137fec, #1e6fd0);
+            color: white;
+            border-radius: 20px 20px 4px 20px;
+        }
+
+        .chat-bubble-ai {
+            background: white;
+            color: #111418;
+            border-radius: 20px 20px 20px 4px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+        }
+
+        .dark .chat-bubble-ai {
+            background: #1a2634;
+            color: #e5e7eb;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .chat-bubble-ai p {
+            margin-bottom: 0.5rem;
+        }
+
+        .chat-bubble-ai p:last-child {
+            margin-bottom: 0;
+        }
+
+        .chat-bubble-ai ul,
+        .chat-bubble-ai ol {
+            margin-left: 1.25rem;
+            margin-bottom: 0.75rem;
+            list-style-position: outside;
+        }
+
+        .chat-bubble-ai ul {
+            list-style-type: disc;
+        }
+
+        .chat-bubble-ai ol {
+            list-style-type: decimal;
+        }
+
+        .chat-bubble-ai li {
+            margin-bottom: 0.25rem;
+        }
+
+        .chat-bubble-ai strong {
+            font-weight: 700;
+        }
+
+        .chat-bubble-ai em {
+            font-style: italic;
+        }
+
+        .chat-bubble-ai table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1rem 0;
+            font-size: 0.85rem;
+            display: block;
+            overflow-x: auto;
+            white-space: nowrap;
+        }
+
+        .chat-bubble-ai th,
+        .chat-bubble-ai td {
+            padding: 0.5rem 0.75rem;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+            text-align: left;
+        }
+
+        .dark .chat-bubble-ai th,
+        .dark .chat-bubble-ai td {
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .chat-bubble-ai th {
+            font-weight: 700;
+            background: rgba(0, 0, 0, 0.02);
+        }
+
+        .dark .chat-bubble-ai th {
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .typing-dot {
+            width: 6px;
+            height: 6px;
+            background: #137fec;
+            border-radius: 50%;
+            animation: dotPulse 1.5s infinite;
+        }
+
+        @keyframes dotPulse {
+
+            0%,
+            100% {
+                opacity: 0.3;
+                transform: scale(0.8);
+            }
+
+            50% {
+                opacity: 1;
+                transform: scale(1.1);
+            }
+        }
+
+        .chat-personalized-bg {
+            background: radial-gradient(circle at top left, rgba(19, 127, 236, .18), transparent 28%), radial-gradient(circle at 85% 20%, rgba(16, 185, 129, .14), transparent 22%), linear-gradient(180deg, rgba(255, 255, 255, .96), rgba(246, 247, 248, .98));
+        }
+
+        .dark .chat-personalized-bg {
+            background: radial-gradient(circle at top left, rgba(19, 127, 236, .18), transparent 28%), radial-gradient(circle at 85% 20%, rgba(16, 185, 129, .10), transparent 22%), linear-gradient(180deg, #0e1722, #101922);
+        }
+
+        .welcome-glow {
+            box-shadow: 0 0 0 1px rgba(19, 127, 236, .08), 0 20px 60px rgba(19, 127, 236, .12);
+        }
+    </style>
+</head>
+
+<body
+    class="font-display bg-background-light dark:bg-background-dark text-[#111418] dark:text-gray-200 overflow-hidden">
+    <div class="flex h-screen w-full">
+        <aside
+            class="fixed inset-y-0 left-0 z-50 w-64 transform -translate-x-full md:relative md:translate-x-0 transition-transform duration-300 ease-in-out bg-white/70 dark:bg-gray-900/70 backdrop-blur-xl border-r border-gray-200 dark:border-gray-800 flex flex-col justify-between flex-shrink-0 h-full">
+            <div>
+                <div class="p-4 flex justify-center items-center h-48">
+                    <img src="{% static 'img/Datium logo modo claro.jpeg' %}"
+                        class="h-full w-auto object-contain block dark:hidden hover:scale-105 transition-transform duration-300 p-2"
+                        alt="Datium">
+                    <img src="{% static 'img/Datium logo modo oscuro.jpeg' %}"
+                        class="h-full w-auto object-contain hidden dark:block hover:scale-105 transition-transform duration-300 p-2"
+                        alt="Datium">
+                </div>
+
+                <div class="px-6 mb-4">
+                    <button onclick="toggleTema()" class="sidebar-link w-full">
+                        <span class="material-symbols-outlined text-lg">dark_mode</span>
+                        <span>Modo Oscuro</span>
+                    </button>
+                </div>
+
+                <nav class="px-4 flex flex-col gap-1">
+                    <a href="dashboard.html" class="sidebar-link">
+                        <span class="material-symbols-outlined">dashboard</span>
+                        Dashboard
+                    </a>
+                    <a href="connections.html" class="sidebar-link">
+                        <span class="material-symbols-outlined">cable</span>
+                        Conexiones
+                    </a>
+                    <a href="stats.html" class="sidebar-link">
+                        <span class="material-symbols-outlined">bar_chart</span>
+                        Estadisticas
+                    </a>
+                    <a href="audit.html" class="sidebar-link">
+                        <span class="material-symbols-outlined">history</span>
+                        Auditoria
+                    </a>
+                    <a href="chat.html" class="sidebar-link active" style="color: var(--primary)">
+                        <span class="material-symbols-outlined">smart_toy</span>
+                        Datium IA
+                    </a>
+                </nav>
+            </div>
+
+            <div
+                class="p-4 border-t border-gray-200 dark:border-gray-800 bg-white/30 dark:bg-gray-900/30 backdrop-blur-md">
+                <a href="profile.html"
+                    class="flex items-center gap-3 mb-3 px-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors p-2 cursor-pointer group">
+                    <div id="userAvatarContainer"
+                        class="h-10 w-10 rounded-full bg-white dark:bg-gray-900 flex items-center justify-center shadow-md ring-2 ring-white dark:ring-gray-800 overflow-hidden group-hover:ring-primary transition-all shrink-0">
+                        <span id="userInitial" class="hidden" aria-hidden="true">·</span>
+                        <img id="userAvatar" src="{% static 'img/Isotipo modo claro.jpeg' %}"
+                            class="h-full w-full object-contain p-1.5" alt="">
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <p id="userName"
+                            class="text-sm font-bold truncate text-[#111418] dark:text-white group-hover:text-primary transition-colors">
+                            Usuario</p>
+                        <p id="userEmail" class="text-xs text-gray-500 truncate">—</p>
+                    </div>
+                </a>
+                <button onclick="logout()"
+                    class="flex items-center gap-2 w-full justify-center px-4 py-2.5 bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-900/30 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/20 rounded-xl text-sm font-bold transition-all">
+                    <span class="material-symbols-outlined text-lg">logout</span>
+                    Cerrar Sesion
+                </button>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main
+            class="flex-1 h-full overflow-hidden flex flex-col bg-background-light dark:bg-background-dark relative chat-personalized-bg">
+            <div
+                class="flex items-center justify-between p-3 md:hidden bg-white/80 dark:bg-[#101922]/80 backdrop-blur-md border-b border-gray-200 dark:border-gray-800 z-30 shrink-0">
+                <div class="flex items-center gap-3">
+                    <button onclick="toggleSidebar()"
+                        class="p-2 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300">
+                        <span class="material-symbols-outlined">menu</span>
+                    </button>
+                    <span class="font-bold text-lg text-[#111418] dark:text-white">Datium IA</span>
+                </div>
+                <button
+                    onclick="if(typeof showReportModal==='function')showReportModal();else window.location.href='profile.html'"
+                    class="p-2 rounded-xl bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400"
+                    title="Reportar problema">
+                    <span class="material-symbols-outlined text-lg">flag</span>
+                </button>
+            </div>
+
+
+            <!-- Chat Container -->
+            <div id="chatMessages"
+                class="flex-1 overflow-y-auto p-4 lg:p-12 space-y-6 custom-scrollbar bg-transparent dark:bg-transparent relative h-full">
+                <!-- Welcome State (Removed) -->
+                <!-- Messages will be injected here -->
+            </div>
+
+            <div id="persistentUndoBar" class="hidden px-4 md:px-6 pb-0 pt-3 bg-transparent">
+                <div class="max-w-4xl mx-auto">
+                    <div
+                        class="flex items-center justify-between gap-3 rounded-2xl border border-amber-200 dark:border-amber-900/40 bg-amber-50 dark:bg-amber-900/10 px-4 py-3 shadow-sm">
+                        <div class="flex items-center gap-3 min-w-0">
+                            <div
+                                class="h-10 w-10 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center flex-shrink-0">
+                                <span class="material-symbols-outlined">undo</span>
+                            </div>
+                            <div class="min-w-0">
+                                <div
+                                    class="text-[11px] font-black uppercase tracking-widest text-amber-600 dark:text-amber-400">
+                                    Undo disponible</div>
+                                <div id="persistentUndoLabel" class="text-sm text-gray-700 dark:text-gray-200 truncate">
+                                    Hay cambios disponibles para deshacer.</div>
+                            </div>
+                        </div>
+                        <button onclick="executeUndoActions()"
+                            class="px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-black text-[11px] uppercase tracking-wider shadow-lg shadow-amber-500/20 transition-all">Deshacer</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Input Area -->
+            <div class="p-4 md:p-6 bg-transparent border-t border-gray-200/60 dark:border-gray-800 relative">
+                <div class="max-w-4xl mx-auto space-y-4">
+                    <!-- File Preview Area -->
+                    <div id="filePreviewContainer"
+                        class="hidden flex flex-wrap gap-3 p-3 bg-gray-100/50 dark:bg-gray-800/30 rounded-2xl border border-gray-200 dark:border-gray-700">
+                        <!-- Previews will be injected here -->
+                    </div>
+
+                    <div class="w-full">
+                        <div
+                            class="relative flex items-center gap-2 bg-gray-50/80 dark:bg-gray-800/30 p-2 rounded-2xl border border-gray-200/80 dark:border-gray-700/60 focus-within:border-primary/50 focus-within:ring-4 focus-within:ring-primary/5 transition-all shadow-sm">
+                            <button id="btnClearHistory"
+                                class="w-10 h-10 rounded-xl text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10 transition-all flex items-center justify-center flex-shrink-0 group"
+                                title="Limpiar Chat" onclick="clearHistory()">
+                                <span
+                                    class="material-symbols-outlined group-hover:rotate-12 transition-transform text-xl">auto_delete</span>
+                            </button>
+                            <div class="relative flex items-center h-10 flex-shrink-0">
+                                <select id="systemSelector"
+                                    class="appearance-none [-webkit-appearance:none] [-moz-appearance:none] bg-white/80 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-700 rounded-xl pl-3 pr-7 text-[10px] font-black uppercase tracking-tight text-gray-500 hover:text-primary transition-all cursor-pointer focus:ring-2 focus:ring-primary/10 outline-none h-full flex items-center max-w-[120px] truncate">
+                                    <option value="">Global</option>
+                                </select>
+                                <span
+                                    class="material-symbols-outlined absolute right-2 pointer-events-none text-gray-400 text-[14px]">expand_more</span>
+                            </div>
+                            <button id="btnAttach"
+                                class="h-10 px-3 rounded-xl text-primary bg-primary/5 hover:bg-primary/10 transition-colors flex items-center justify-center gap-1 flex-shrink-0 border border-primary/20"
+                                title="Adjuntar archivo" onclick="document.getElementById('fileInput').click()">
+                                <span class="material-symbols-outlined text-[18px]">attach_file</span>
+                                <span
+                                    class="text-[10px] font-bold uppercase tracking-wider hidden sm:block">Subir</span>
+                            </button>
+                            <input type="file" id="fileInput" class="hidden" multiple onchange="handleFileSelect(this)">
+                            <textarea id="chatInput" rows="1"
+                                placeholder="Pídeme algo como: crea una tabla de asistentes, analiza este sistema o prepara un cambio..."
+                                class="flex-1 bg-transparent border-none focus:ring-0 text-sm py-2.5 px-2 resize-none custom-scrollbar dark:text-white min-h-[44px] max-h-[220px] overflow-y-auto"></textarea>
+
+                            <!-- Stop Button (Hidden by default) -->
+                            <button id="btnStop"
+                                class="hidden p-3 bg-red-500 text-white rounded-xl shadow-lg shadow-red-500/30 hover:bg-red-600 transition-all flex-shrink-0"
+                                title="Detener respuesta">
+                                <span class="material-symbols-outlined text-xl">stop_circle</span>
+                            </button>
+
+                            <button id="btnSend"
+                                class="p-3 bg-primary text-white rounded-xl shadow-lg shadow-primary/30 hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex-shrink-0">
+                                <span class="material-symbols-outlined text-xl">send</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+        </main>
+    </div>
+
+    <!-- Modals -->
+    <div id="confirmModal"
+        class="hidden fixed inset-0 bg-black/60 backdrop-blur-md z-[100] flex items-center justify-center p-4">
+        <div
+            class="bg-white dark:bg-[#151f2b] rounded-[2.5rem] p-8 w-full max-w-sm shadow-2xl border border-gray-200 dark:border-gray-800 text-center scale-95 transition-all duration-300">
+            <div
+                class="w-20 h-20 bg-primary/10 rounded-3xl flex items-center justify-center mx-auto mb-6 text-primary animate-pulse">
+                <span class="material-symbols-outlined text-4xl">sweep</span>
+            </div>
+            <h3 class="text-2xl font-black text-[#111418] dark:text-white mb-2 italic">Limpiar Chat</h3>
+            <p id="confirmText" class="text-sm text-gray-500 dark:text-gray-400 mb-8 px-4 font-medium line-relaxed">
+                ¿Deseas vaciar el historial para iniciar una nueva conversación?</p>
+            <div class="flex flex-col gap-3">
+                <button onclick="closeConfirmModal(true)"
+                    class="w-full py-4 rounded-2xl bg-primary text-white font-black shadow-lg shadow-primary/30 hover:bg-blue-600 transition-all hover:scale-[1.02] active:scale-95 text-sm uppercase tracking-wider">Vaciar
+                    Historial</button>
+                <button onclick="closeConfirmModal(false)"
+                    class="w-full py-4 rounded-2xl border border-gray-200 dark:border-gray-800 text-gray-600 dark:text-gray-400 font-bold hover:bg-gray-50 dark:hover:bg-gray-800 transition-all text-xs">Mantener
+                    Mensajes</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- AI CRUD Confirmation Modal -->
+    <div id="aiCrudModal"
+        class="hidden fixed inset-0 bg-black/60 backdrop-blur-md z-[110] flex items-center justify-center p-4">
+        <div
+            class="bg-white dark:bg-[#151f2b] rounded-[2.5rem] p-8 w-full max-w-lg shadow-2xl border border-gray-200 dark:border-gray-800">
+            <div class="flex items-start justify-between gap-4 mb-6">
+                <div>
+                    <h3 class="text-2xl font-black text-[#111418] dark:text-white">Revisión de cambios ✨</h3>
+                    <p class="text-xs text-gray-500 dark:text-gray-400 font-medium mt-1">Puedes aceptar, cancelar y
+                        luego deshacer. Para eliminar, se pedirá contraseña.</p>
+                </div>
+                <button onclick="closeAiCrudModal(false)"
+                    class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors">
+                    <span class="material-symbols-outlined">close</span>
+                </button>
+            </div>
+
+            <div class="p-4 rounded-2xl bg-gray-50 dark:bg-gray-800/40 border border-gray-200 dark:border-gray-700">
+                <div class="text-[11px] font-black uppercase tracking-widest text-gray-500 dark:text-gray-400">
+                    Operaciones</div>
+                <div id="aiCrudSummary"
+                    class="mt-2 text-sm font-medium text-gray-700 dark:text-gray-200 leading-relaxed">—</div>
+            </div>
+
+            <div class="mt-5 flex flex-col sm:flex-row gap-3">
+                <button onclick="closeAiCrudModal(false)"
+                    class="flex-1 py-3 rounded-2xl border border-gray-200 dark:border-gray-800 text-gray-600 dark:text-gray-300 font-black text-[11px] uppercase tracking-wider hover:bg-gray-50 dark:hover:bg-gray-800 transition-all">
+                    Cancelar
+                </button>
+                <button onclick="closeAiCrudModal(true)"
+                    class="flex-1 py-3 rounded-2xl bg-emerald-500 text-white font-black text-[11px] uppercase tracking-wider shadow-lg shadow-emerald-500/20 hover:bg-emerald-600 transition-all">
+                    Confirmar y Ejecutar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="whatsAppShareModal"
+        class="hidden fixed inset-0 bg-black/80 backdrop-blur-xl z-[115] flex items-center justify-center p-4">
+        <div
+            class="bg-white dark:bg-[#0b141a] rounded-[2.5rem] p-8 w-full max-w-lg shadow-[0_0_50px_-12px_rgba(37,211,102,0.3)] border border-[#25D366]/30 dark:border-[#25D366]/20 relative overflow-hidden">
+            <div
+                class="absolute top-0 right-0 -mr-16 -mt-16 w-48 h-48 bg-[#25D366]/20 rounded-full blur-[60px] pointer-events-none">
+            </div>
+
+            <div class="flex items-start justify-between gap-4 mb-6 relative">
+                <div class="flex items-center gap-4">
+                    <div class="w-14 h-14 bg-[#25D366]/10 rounded-full flex items-center justify-center text-[#25D366]">
+                        <img src="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg" alt="WhatsApp"
+                            class="w-8 h-8 drop-shadow-md">
+                    </div>
+                    <div>
+                        <h3 class="text-2xl font-black text-[#111418] dark:text-white leading-tight">Enviar por WhatsApp
+                        </h3>
+                        <p class="text-[11px] text-[#25D366] font-bold uppercase tracking-widest mt-1">Comparte con tu
+                            equipo</p>
+                    </div>
+                </div>
+                <button onclick="closeWhatsAppShareModal()"
+                    class="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all flex items-center justify-center"><span
+                        class="material-symbols-outlined">close</span></button>
+            </div>
+
+            <div class="space-y-5 relative">
+                <div class="group">
+                    <label
+                        class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 pl-1 group-focus-within:text-[#25D366] transition-colors">Selecciona
+                        un Contacto</label>
+                    <div class="relative">
+                        <select id="whatsAppTargetSelect"
+                            class="w-full px-5 py-4 rounded-2xl border-2 border-transparent bg-gray-50 dark:bg-gray-800/50 text-sm font-semibold dark:text-white focus:bg-white dark:focus:bg-gray-900 focus:border-[#25D366]/50 focus:ring-4 focus:ring-[#25D366]/10 outline-none transition-all appearance-none cursor-pointer"></select>
+                        <span
+                            class="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">expand_content</span>
+                    </div>
+                </div>
+                <div class="group">
+                    <label
+                        class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 pl-1 group-focus-within:text-[#25D366] transition-colors">Cuerpo
+                        del Mensaje</label>
+                    <textarea id="whatsAppMessageInput" rows="5"
+                        class="w-full px-5 py-4 rounded-2xl border-2 border-transparent bg-gray-50 dark:bg-gray-800/50 text-sm font-medium text-gray-700 dark:text-gray-300 focus:bg-white dark:focus:bg-gray-900 focus:border-[#25D366]/50 focus:ring-4 focus:ring-[#25D366]/10 outline-none transition-all resize-none shadow-inner"
+                        placeholder="Pídele a la IA que redacte un mensaje y envíalo desde aquí..."></textarea>
+                </div>
+                <div class="pt-2">
+                    <button onclick="shareViaWhatsApp()"
+                        class="group relative w-full py-4 rounded-2xl bg-[#25D366] text-white font-black text-xs uppercase tracking-[0.2em] shadow-[0_10px_25px_-5px_rgba(37,211,102,0.4)] hover:shadow-[0_15px_35px_-5px_rgba(37,211,102,0.5)] hover:-translate-y-1 active:translate-y-0 transition-all flex items-center justify-center gap-3 overflow-hidden">
+                        <span class="relative z-10">Lanzar WhatsApp</span>
+                        <span
+                            class="material-symbols-outlined relative z-10 group-hover:translate-x-1 transition-transform">send</span>
+                        <div
+                            class="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:animate-[shimmer_1.5s_infinite]">
+                        </div>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <script src="{% static 'js/auth.js' %}"></script>
+    <script src="{% static 'js/app.js' %}"></script>
+    <script src="{% static 'chatbot/chat.js' %}"></script>
+    <script>
+        async function loadUserInfo() {
+            const res = await apiFetch('/user/profile');
+            if (res && res.ok) {
+                const u = await res.json();
+                if (typeof window.datiumApplySidebar === 'function') {
+                    window.datiumApplySidebar(u);
+                }
+            }
+        }
+        loadUserInfo();
+
+        function setSuggestion(text) {
+            const input = document.getElementById('chatInput');
+            input.value = text;
+            input.disabled = false;
+            input.focus();
+            document.getElementById('btnSend').disabled = false;
+        }
+    </script>
+</body>
+
+</html>

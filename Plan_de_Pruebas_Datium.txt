@@ -1,0 +1,152 @@
+====================================================================
+PLAN DE PRUEBAS DE SOFTWARE - PROYECTO DATIUM
+====================================================================
+
+1. RECURSOS
+--------------------------------------------------------------------
+Requerimientos de Entornos – Hardware 
+Lista de los requerimientos de equipos, hardware y red necesarios para completar las actividades del Plan de Pruebas de Software en Datium.
+
+[Servidor de Aplicación / Servidor IA (Ollama)]
+- Procesador: Intel Core i5/i7 o AMD Ryzen 5/7 (o superior) para manejo de la concurrencia.
+- Memoria (RAM): Mínimo 16 GB (Recomendado para correr modelos LLM o gemma4 de forma fluida).
+- GPU (Opcional pero muy recomendado): Tarjeta gráfica NVIDIA (ej. RTX 3060 o superior) para aceleración de inferencia de IA.
+- Disco Duro: SSD con al menos 50 GB de espacio libre (para el sistema operativo, base de datos y pesos de los modelos de IA).
+- Conectividad: Acceso a red local / Internet para peticiones externas.
+
+[Equipos para Testers (Clientes)]
+- Procesador: Intel Core i3 / AMD Ryzen 3 o superior.
+- Memoria (RAM): 8 GB.
+- Tipo sistema: Sistema operativo de 64 bits.
+- Resolución de pantalla: 1366x768 o superior (para pruebas de interfaz responsive).
+- Conexión a red para acceder al servidor local/remoto de pruebas (ej. https://127.0.0.1:8000).
+
+--------------------------------------------------------------------
+Requerimientos de Entornos – Software 
+Lista de los requerimientos de software necesarios para completar las actividades de prueba:
+
+- Sistema Operativo (Servidor): Windows 10/11 Pro, Linux (Ubuntu 20.04+) o macOS.
+- Lenguaje: Python 3.10+
+- Frameworks Backend: Django (>=4.2), Django REST Framework.
+- Motor de Inteligencia Artificial: Ollama (versión 0.3 o superior) instalado y corriendo en segundo plano (puerto 11434).
+- Modelos IA requeridos: qwen3.5:cloud y/o gemma4 descargados en Ollama.
+- Base de Datos: SQLite (para pruebas unitarias rápidas) o MySQL (para entorno de pruebas / staging).
+- Navegadores Web para Testers: Google Chrome (última versión), Mozilla Firefox, Microsoft Edge.
+
+
+2. HERRAMIENTAS DE PRUEBAS REQUERIDAS
+--------------------------------------------------------------------
+- Automatización / Unit Testing: `pytest-django` o el módulo `unittest` nativo de Django para validar vistas y utilidades del backend.
+- Pruebas de API: Postman o Insomnia (para probar los endpoints de la API REST de Datium, ej: endpoints de chat, auditoría y vistas de sistema).
+- Pruebas E2E (Frontend): Selenium o Cypress para simular interacciones reales de usuarios en el chat (interfaz HTML/JS/CSS).
+- Gestión de Pruebas y Defectos: Jira, Trello o GitHub Issues para el seguimiento de incidencias (bugs) encontradas en el sistema o "alucinaciones" de la IA.
+
+
+3. PERSONAL
+--------------------------------------------------------------------
+- Un (1) Líder de Pruebas (QA Lead): Encargado de planificar, diseñar la estrategia general, supervisar el avance y aprobar los pases a producción.
+- Dos (2) Analistas de Pruebas (Functional Testers): Encargados de validar la interfaz gráfica (UI/UX), roles, creación de sistemas y tablas en el frontend.
+- Un (1) Especialista de Pruebas de IA / Backend: Dedicado a probar la consistencia de las respuestas de Ollama, tiempos de latencia y parseo de acciones JSON generadas por el motor.
+
+
+4. ENTRENAMIENTO
+--------------------------------------------------------------------
+- Capacitación sobre el flujo del Chatbot: El equipo debe entender cómo la IA procesa el "System Prompt", cómo se inyectan los esquemas de bases de datos y la regla estricta de generar bloques JSON para acciones (create_system, list_records, etc.).
+- Entrenamiento en Seguridad de Datium: Comprender la jerarquía de roles, planes, niveles de experiencia y permisos sobre registros para forzar pruebas de vulnerabilidades.
+- Uso de herramientas: Breve capacitación en el uso de Postman para probar el backend sin pasar por el frontend.
+
+
+5. PLANIFICACIÓN Y ORGANIZACIÓN
+--------------------------------------------------------------------
+Procedimientos para las Pruebas:
+- Pruebas de Caja Blanca (Backend/API): Validación de que el backend guarda correctamente los registros (SystemRecord, SystemField), auditorías y de que la lógica en `ai_engine.py` reacciona bien ante diferentes inputs.
+- Pruebas de Caja Negra (Chatbot): Escribir intenciones de usuario natural en el chat y verificar que la interfaz refleje correctamente las estructuras (tablas, formularios) y confirme las operaciones.
+- Pruebas de Seguridad (Prompt Injection): Intentar engañar a la IA pidiéndole que borre sistemas para los cuales el usuario no tiene permisos o que ignore sus instrucciones de sistema.
+- Pruebas de Carga: Enviar múltiples solicitudes simultáneas al motor de IA para verificar cómo Django y Ollama encolan o resuelven las peticiones.
+
+Matriz de Responsabilidades (RACI):
+- Tarea: Creación de Casos de Prueba -> Responsable: Testers | Aprobador: QA Lead | Consultado: Desarrolladores.
+- Tarea: Ejecución Pruebas Frontend -> Responsable: Testers | Informado: QA Lead, Project Manager.
+- Tarea: Ejecución Pruebas IA/Backend -> Responsable: Especialista IA | Aprobador: QA Lead | Consultado: Desarrolladores.
+- Tarea: Aprobación Final -> Responsable: QA Lead | Aprobador: Project Manager.
+
+
+6. CRONOGRAMA
+--------------------------------------------------------------------
+- Hito 1 (Día 1): Setup del entorno de pruebas (Configuración de DB, carga de datos falsos de usuarios y tablas, inicialización de Ollama).
+- Hito 2 (Día 2-3): Ejecución de pruebas Backend y Endpoints API (Verificación de CRUD, permisos de usuario).
+- Hito 3 (Día 4-5): Pruebas del motor IA (Verificación de precisión de generación de JSON, validación de contexto histórico de chat y latencia).
+- Hito 4 (Día 6-7): Pruebas E2E y de Interfaz Gráfica (Validación del frontend interactivo, diseño responsive, alertas y confirmaciones modales).
+- Hito 5 (Día 8): Ejecución de Pruebas de Seguridad y estrés de la IA.
+- Hito 6 (Día 9): Levantamiento de Bugs, re-testing (regresión) y Reporte Final.
+
+
+7. PREMISAS
+--------------------------------------------------------------------
+- El entorno de Ollama debe estar inicializado y el modelo definido (ej. qwen3.5:cloud) debe estar cacheado antes de iniciar las pruebas.
+- Existirá un conjunto de datos (Mock Data) de prueba con diferentes tipos de usuarios (básicos, administradores) y sistemas pre-creados para probar el "Foco" de la IA.
+- Los certificados SSL locales deben estar generados para las pruebas de HTTPS.
+
+
+8. DEPENDENCIAS Y RIESGOS
+--------------------------------------------------------------------
+- Riesgo 1: La IA devuelve JSON mal formateados (Alucinación).
+  * Mitigación: Validaciones robustas en `ai_engine.py` (expresiones regulares) y fallback a mensajes de error controlados para el usuario.
+- Riesgo 2: Tiempos de respuesta (Timeout) demasiado largos de Ollama.
+  * Mitigación: Probar y definir un tiempo de espera máximo razonable (ej. 180 segundos como está actualmente). Informar visualmente al usuario (loaders).
+- Riesgo 3: Problemas de concurrencia al usar un modelo local (cuello de botella de Hardware).
+  * Mitigación: Testear cuántas peticiones simultáneas soporta el hardware actual y considerar encolar peticiones en el backend si es necesario.
+- Dependencia: El frontend depende enteramente de la estabilidad del backend y de que las respuestas de la IA respeten el formato esperado.
+
+
+9. REFERENCIAS
+--------------------------------------------------------------------
+- Especificaciones y Reglas del "System Prompt" de Datium.
+- Documentación Oficial de Django y Django REST Framework.
+- Documentación de la API de Ollama.
+- Esquema de base de datos relacional de Datium (Modelos: System, SystemTable, SystemField, SystemRecord, User).
+
+
+10. GLOSARIO
+--------------------------------------------------------------------
+Falla
+Manifestación física o funcional de un defecto. Desviación de un componente o sistema respecto de la presentación, servicio o resultado esperado.
+
+Defecto
+Desperfecto en un componente o sistema que puede causar que el sistema falle en desempeñar las funciones requeridas. Puede darse en una sentencia o una definición de datos incorrectos.
+
+Error
+Acción humana que produce un resultado incorrecto. Puede dar al momento en que el desarrollador asigna 2 valores a una misma variable.
+
+Incidencia
+Cualquier ocurrencia de un suceso que requiere investigación [Según IEEE 1008].
+
+Escalabilidad
+Capacidad de un producto software de ser actualizado para adaptarse a cargas crecientes (muy importante para el modelo de IA local).
+
+White Box Testing (pruebas de caja blanca)
+Técnica que examina la estructura del programa y los datos de prueba derivados de la lógica del programa/código (ej. probar el parseo JSON en Python).
+
+Black Box Testing (pruebas de caja negra)
+Método de pruebas que examina la funcionalidad de una aplicación basada en las especificaciones. Ej. probar si el chat cumple su objetivo desde la vista del usuario.
+
+Pertenencia
+Relación de una cosa con quien tiene derecho a ella. (En Datium: Permisos sobre un 'System' u 'Owner').
+
+Restringir
+Disminuir o reducir los límites de algo. (Ej: restringir permisos para crear bases de datos en Datium).
+
+Vulnerabilidad
+Riesgo que el sistema u persona puede sufrir frente a los peligros (ej. inyección de prompts, acceso no autorizado a la API).
+
+Funcionalidades
+Propiedad de las cosas que tienen una utilidad práctica.
+
+Veracidad
+Cualidad de lo que es verdadero. (En IA: Asegurar que el modelo use datos reales de la base de datos y "no invente" respuestas falsas o irreales).
+
+Alucinación (IA)
+Respuesta de la Inteligencia Artificial que parece coherente o formal pero contiene información falsa, inventada o estructuras de datos no válidas.
+
+Prompt
+Instrucción o conjunto de instrucciones que se le proporciona al modelo de IA para que genere una respuesta.

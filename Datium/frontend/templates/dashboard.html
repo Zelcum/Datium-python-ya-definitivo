@@ -1,0 +1,425 @@
+{% load static %}
+<!DOCTYPE html>
+<html class="dark" lang="es">
+
+<head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <title>Datium — Dashboard</title>
+    <meta name="description" content="Panel de control de Datium. Administra tus sistemas, tablas y datos en tiempo real.">
+    <link rel="icon" type="image/jpeg" href="{% static 'img/Isotipo modo oscuro.jpeg' %}" id="favicon">
+    <script src="https://cdn.tailwindcss.com/3.4.1?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com" rel="preconnect" />
+    <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;900&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet" />
+    <link rel="stylesheet" href="{% static 'css/styles.css' %}">
+    <link rel="stylesheet" href="{% static 'css/animations.css' %}">
+    <link rel="stylesheet" href="{% static 'css/components.css' %}">
+    <link rel="stylesheet" href="{% static 'css/loading.css' %}">
+    <link rel="stylesheet" href="{% static 'css/layout.css' %}">
+    <script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#3b82f6",
+                        "background-light": "#f1f5f9",
+                        "background-dark": "#0f172a",
+                    },
+                    fontFamily: {
+                        "display": ["Inter", "sans-serif"]
+                    },
+                },
+            },
+        }
+    </script>
+    <script>
+        const theme = localStorage.getItem('theme');
+        if (theme === 'dark' || (!theme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
+    </script>
+</head>
+
+<body class="font-display bg-background-light dark:bg-background-dark text-[#111418] dark:text-gray-200 overflow-hidden">
+
+
+
+    <div class="flex h-screen w-full">
+
+        <aside class="fixed inset-y-0 left-0 z-50 w-64 transform -translate-x-full md:relative md:translate-x-0 transition-transform duration-300 ease-in-out bg-white/70 dark:bg-gray-900/70 backdrop-blur-xl border-r border-gray-200 dark:border-gray-800 flex flex-col justify-between flex-shrink-0 h-full">
+            <div>
+                <div class="p-4 flex justify-center items-center h-48">
+                    <img src="{% static 'img/Datium logo modo claro.jpeg' %}" class="h-full w-auto object-contain block dark:hidden hover:scale-105 transition-transform duration-300 p-2" alt="Datium">
+                    <img src="{% static 'img/Datium logo modo oscuro.jpeg' %}" class="h-full w-auto object-contain hidden dark:block hover:scale-105 transition-transform duration-300 p-2" alt="Datium">
+                </div>
+
+                <div class="px-6 mb-4">
+                    <button onclick="toggleTema()" class="sidebar-link w-full">
+                        <span class="material-symbols-outlined text-lg" id="tema-icon-dashboard">dark_mode</span>
+                        <span>Modo Oscuro</span>
+                    </button>
+                </div>
+
+                <nav class="px-4 flex flex-col gap-1">
+                    <a href="dashboard.html" class="sidebar-link active">
+                        <span class="material-symbols-outlined">dashboard</span>
+                        Dashboard
+                    </a>
+                    <a href="connections.html" class="sidebar-link">
+                        <span class="material-symbols-outlined">cable</span>
+                        Conexiones
+                    </a>
+                    <a href="stats.html" class="sidebar-link">
+                        <span class="material-symbols-outlined">bar_chart</span>
+                        Estadisticas
+                    </a>
+                    <a href="audit.html" class="sidebar-link">
+                        <span class="material-symbols-outlined">history</span>
+                        Auditoria
+                    </a>
+                    <a href="chat.html" class="sidebar-link" style="color: var(--primary)">
+                        <span class="material-symbols-outlined">smart_toy</span>
+                        Datium IA
+                    </a>
+                </nav>
+            </div>
+
+            <div class="p-4 border-t border-gray-200 dark:border-gray-800 bg-white/30 dark:bg-gray-900/30 backdrop-blur-md">
+                <a href="profile.html" class="flex items-center gap-3 mb-3 px-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors p-2 cursor-pointer group">
+                    <div id="userAvatarContainer" class="h-10 w-10 rounded-full bg-white dark:bg-gray-900 flex items-center justify-center shadow-md ring-2 ring-white dark:ring-gray-800 overflow-hidden group-hover:ring-primary transition-all shrink-0">
+                        <span id="userInitial" class="hidden" aria-hidden="true">·</span>
+                        <img id="userAvatar" src="{% static 'img/Isotipo modo claro.jpeg' %}" class="h-full w-full object-contain p-1.5" alt="">
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <p id="userName" class="text-sm font-bold truncate text-[#111418] dark:text-white group-hover:text-primary transition-colors">Usuario</p>
+                        <p id="userEmail" class="text-xs text-gray-500 truncate">—</p>
+                    </div>
+                </a>
+                <button onclick="logout()" class="flex items-center gap-2 w-full justify-center px-4 py-2.5 bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-900/30 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/20 rounded-xl text-sm font-bold transition-all">
+                    <span class="material-symbols-outlined text-lg">logout</span>
+                    Cerrar Sesion
+                </button>
+            </div>
+        </aside>
+
+        <main class="flex-1 h-full overflow-y-auto overflow-x-hidden bg-background-light dark:bg-background-dark relative scroll-smooth p-4 md:p-8 w-full page-transition">
+
+            <div class="flex items-center justify-between mb-6 md:hidden">
+                <div class="flex items-center gap-3">
+                    <button onclick="toggleSidebar()" class="p-2 rounded-xl bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 shadow-sm">
+                        <span class="material-symbols-outlined">menu</span>
+                    </button>
+                    <span class="font-bold text-lg text-[#111418] dark:text-white">Dashboard</span>
+                </div>
+                <button onclick="if(typeof showReportModal==='function')showReportModal();else window.location.href='profile.html'" class="p-2 rounded-xl bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400" title="Reportar problema">
+                    <span class="material-symbols-outlined text-lg">flag</span>
+                </button>
+            </div>
+
+            <div class="max-w-7xl mx-auto space-y-6 relative z-10 w-full">
+
+
+
+                <div id="createSystemContainer" class="hidden transform transition-all duration-500 ease-out origin-top z-50">
+                    <div class="bg-white/90 dark:bg-[#151f2b]/95 backdrop-blur-2xl rounded-2xl p-1 border border-white/20 dark:border-gray-700/50 shadow-2xl overflow-hidden ring-1 ring-black/5">
+                        <div class="h-1 w-full bg-gradient-to-r from-transparent via-primary to-transparent opacity-80"></div>
+                        <div class="p-4">
+                            <div class="flex justify-between items-center mb-4">
+                                <h3 class="text-lg font-bold text-[#111418] dark:text-white flex items-center gap-3">
+                                    <div class="icon-circle icon-circle-primary">
+                                        <span class="material-symbols-outlined text-lg">storage</span>
+                                    </div>
+                                    <span id="formTitle">Crear Nuevo Sistema</span>
+                                </h3>
+                                <button onclick="toggleCreateForm()" class="action-btn action-btn-danger">
+                                    <span class="material-symbols-outlined">close</span>
+                                </button>
+                            </div>
+                            <iframe id="systemFormFrame" src="system_form.html"
+                                class="w-full h-[450px] border-none rounded-xl bg-gray-50/50 dark:bg-black/20"
+                                title="Formulario Sistema"></iframe>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="passwordPromptModal" class="hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-[60] flex items-center justify-center transition-opacity duration-300">
+                    <div class="bg-white dark:bg-[#151f2b] rounded-2xl p-6 w-full max-w-sm shadow-2xl border border-gray-200 dark:border-gray-700">
+                        <div class="text-center mb-6">
+                            <div class="icon-circle icon-circle-danger mx-auto mb-3 w-12 h-12">
+                                <span class="material-symbols-outlined text-2xl">lock</span>
+                            </div>
+                            <h3 class="text-lg font-bold text-[#111418] dark:text-white">Acceso Restringido</h3>
+                            <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Este sistema esta protegido.</p>
+                        </div>
+                        <div class="mb-5">
+                            <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Contrasena</label>
+                            <input type="password" id="promptPasswordInput" class="datium-input" placeholder="••••••••">
+                            <p id="passwordErrorMsg" class="hidden text-xs text-red-500 mt-2 font-bold text-center"></p>
+                        </div>
+                        <div class="flex gap-3">
+                            <button onclick="closePasswordPrompt()" class="datium-btn datium-btn-ghost flex-1">Cancelar</button>
+                            <button onclick="confirmPassword()" class="datium-btn datium-btn-primary flex-1">Confirmar</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="invitationModal" class="hidden fixed inset-0 bg-transparent z-[60] flex items-center justify-center transition-opacity duration-300">
+                    <div class="bg-white dark:bg-[#151f2b] rounded-2xl p-6 w-full max-w-lg shadow-2xl border border-gray-200 dark:border-gray-700 max-h-[80vh] flex flex-col">
+                        <div class="flex justify-between items-center mb-6">
+                            <div class="flex items-center gap-3">
+                                <div class="icon-circle icon-circle-accent">
+                                    <span class="material-symbols-outlined text-lg">person_add</span>
+                                </div>
+                                <h3 class="text-lg font-bold text-[#111418] dark:text-white">Gestionar Invitaciones</h3>
+                            </div>
+                            <button onclick="closeInvitationModal()" class="action-btn">
+                                <span class="material-symbols-outlined">close</span>
+                            </button>
+                        </div>
+                        <div class="mb-6 space-y-3">
+                            <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide">Invitar Usuario</label>
+                            <div class="flex gap-2">
+                                <input type="email" id="inviteEmail" placeholder="correo@ejemplo.com" class="datium-input flex-1">
+                                <button onclick="sendInvitation()" class="datium-btn datium-btn-primary">
+                                    <span class="material-symbols-outlined text-lg">send</span>
+                                    Invitar
+                                </button>
+                            </div>
+                            <div class="grid grid-cols-2 gap-2 mt-4">
+                                <label class="flex items-center gap-2 p-2 rounded-lg border border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900/30 cursor-default">
+                                    <input type="checkbox" id="permRead" checked disabled class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                                    <span class="text-[10px] font-bold text-gray-500 uppercase">Leer</span>
+                                </label>
+                                <label class="flex items-center gap-2 p-2 rounded-lg border border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900/30 cursor-pointer">
+                                    <input type="checkbox" id="permCreate" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                                    <span class="text-[10px] font-bold text-gray-500 uppercase">Crear registros</span>
+                                </label>
+                            </div>
+                        </div>
+                        <div class="flex-1 overflow-y-auto min-h-[150px]">
+                            <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-3">Usuarios Invitados</label>
+                            <div id="invitationsList" class="space-y-2">
+                                <div class="text-center py-8 text-gray-400 text-sm">Cargando...</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div class="stat-card animate-fade-in-up" style="animation-delay: 0.05s">
+                        <div class="flex justify-between items-start mb-4">
+                            <div class="icon-circle icon-circle-primary">
+                                <span class="material-symbols-outlined">grid_view</span>
+                            </div>
+                            <span class="badge badge-success">Activo</span>
+                        </div>
+                        <div id="statTotalSystems" class="text-3xl font-black text-[#111418] dark:text-white mb-1">0</div>
+                        <h4 class="text-gray-500 dark:text-gray-400 text-xs font-medium">Sistemas Totales</h4>
+                    </div>
+
+                    <div class="stat-card animate-fade-in-up" style="animation-delay: 0.1s">
+                        <div class="flex justify-between items-start mb-4">
+                            <div class="icon-circle icon-circle-accent">
+                                <span class="material-symbols-outlined">group</span>
+                            </div>
+                        </div>
+                        <div id="statTotalUsers" class="text-3xl font-black text-[#111418] dark:text-white mb-1">0</div>
+                        <h4 class="text-gray-500 dark:text-gray-400 text-xs font-medium">Usuarios Totales</h4>
+                    </div>
+
+                    <div class="stat-card animate-fade-in-up" style="animation-delay: 0.15s">
+                        <div class="flex justify-between items-start mb-4">
+                            <div class="icon-circle" style="background: rgba(245,158,11,0.15); color: #f59e0b">
+                                <span class="material-symbols-outlined">list</span>
+                            </div>
+                        </div>
+                        <div id="statTotalRecords" class="text-3xl font-black text-[#111418] dark:text-white mb-1">0</div>
+                        <h4 class="text-gray-500 dark:text-gray-400 text-xs font-medium">Registros Totales</h4>
+                    </div>
+
+                    <div class="stat-card animate-fade-in-up" style="animation-delay: 0.2s">
+                        <div class="flex justify-between items-start mb-4">
+                            <div class="icon-circle icon-circle-success">
+                                <span class="material-symbols-outlined">security</span>
+                            </div>
+                        </div>
+                        <div id="statSecureSystems" class="text-3xl font-black text-[#111418] dark:text-white mb-1">0</div>
+                        <h4 class="text-gray-500 dark:text-gray-400 text-xs font-medium">Sistemas Seguros</h4>
+                    </div>
+                </div>
+
+
+
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
+
+                    <div class="lg:col-span-2 surface-card flex flex-col h-[400px] overflow-hidden animate-fade-in-up" style="animation-delay: 0.25s">
+                        <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-800 flex justify-between items-center bg-gray-50/50 dark:bg-[#1a2634]/50">
+                            <h3 class="font-bold text-[#111418] dark:text-white text-sm flex items-center gap-2">
+                                <span class="material-symbols-outlined text-blue-500">grid_view</span>
+                                Mis Sistemas
+                            </h3>
+                            <div class="flex items-center gap-2">
+                                <button onclick="loadSystems()" class="action-btn" title="Refrescar">
+                                    <span class="material-symbols-outlined text-lg">refresh</span>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="overflow-x-auto overflow-y-auto flex-1 p-0">
+                            <div class="min-w-[800px] lg:min-w-0">
+                                <table class="data-table">
+                                    <thead>
+                                        <tr>
+                                            <th class="w-16">Logo</th>
+                                            <th>Nombre</th>
+                                            <th class="text-center">Usuarios</th>
+                                            <th>Creacion</th>
+                                            <th class="text-right">Acciones</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="systemsList"></tbody>
+                                </table>
+                            </div>
+                            <div id="emptyState" class="hidden empty-state h-full">
+                                <div class="empty-state-icon">
+                                    <span class="material-symbols-outlined text-2xl">dns</span>
+                                </div>
+                                <h3 class="text-sm font-bold text-[#111418] dark:text-white">Sin sistemas aun</h3>
+                                <p class="text-xs text-gray-500">Crea tu primer sistema para comenzar</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex flex-col gap-3 animate-fade-in-up" style="animation-delay: 0.3s">
+                        <h3 class="font-bold text-[#111418] dark:text-white text-sm mb-1">Acciones Rapidas</h3>
+
+                        <button onclick="window.location.href='system_form.html'"
+                            class="surface-card p-4 hover:border-blue-500/50 text-left flex items-center gap-4 group">
+                            <div class="icon-circle icon-circle-primary group-hover:scale-110 transition-transform">
+                                <span class="material-symbols-outlined">add_box</span>
+                            </div>
+                            <div>
+                                <div class="text-blue-400 font-bold text-sm">Crear Nuevo Sistema</div>
+                                <div class="text-gray-500 text-xs">Configura una nueva base de datos</div>
+                            </div>
+                        </button>
+
+                        <button onclick="window.location.href='connections.html'"
+                            class="surface-card p-4 hover:border-purple-500/50 text-left flex items-center gap-4 group">
+                            <div class="icon-circle icon-circle-accent group-hover:scale-110 transition-transform">
+                                <span class="material-symbols-outlined">cable</span>
+                            </div>
+                            <div>
+                                <div class="text-purple-400 font-bold text-sm">Conexiones</div>
+                                <div class="text-gray-500 text-xs">Mover tablas entre sistemas</div>
+                            </div>
+                        </button>
+
+                        <button onclick="window.location.href='audit.html'"
+                            class="surface-card p-4 hover:border-orange-500/50 text-left flex items-center gap-4 group">
+                            <div class="icon-circle" style="background: rgba(245,158,11,0.15); color: #f59e0b">
+                                <span class="material-symbols-outlined group-hover:scale-110 transition-transform">history</span>
+                            </div>
+                            <div>
+                                <div class="text-amber-400 font-bold text-sm">Consultar Auditoria</div>
+                                <div class="text-gray-500 text-xs">Revisar logs de sistemas</div>
+                            </div>
+                        </button>
+
+                        <button onclick="window.location.href='chat.html'"
+                            class="surface-card p-4 hover:border-emerald-500/50 text-left flex items-center gap-4 group ai-glow">
+                            <div class="icon-circle icon-circle-success group-hover:scale-110 transition-transform">
+                                <span class="material-symbols-outlined">smart_toy</span>
+                            </div>
+                            <div>
+                                <div class="text-emerald-400 font-bold text-sm">Datium IA</div>
+                                <div class="text-gray-500 text-xs">Automatiza tareas con IA</div>
+                            </div>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+                    <div class="surface-card p-5 flex flex-col items-center animate-fade-in-up" style="animation-delay: 0.35s">
+                        <div class="w-full flex items-center gap-2 mb-4">
+                            <span class="material-symbols-outlined text-blue-400 text-lg">security</span>
+                            <h3 class="font-bold text-[#111418] dark:text-white text-sm">Seguridad</h3>
+                        </div>
+                        <div class="h-32 w-32 relative">
+                            <canvas id="securityChart"></canvas>
+                        </div>
+                        <div class="flex gap-4 mt-4">
+                            <div class="flex items-center gap-1.5">
+                                <span class="w-2 h-2 rounded-full bg-red-500"></span>
+                                <span class="text-[10px] text-gray-400">Ninguna</span>
+                            </div>
+                            <div class="flex items-center gap-1.5">
+                                <span class="w-2 h-2 rounded-full bg-green-500"></span>
+                                <span class="text-[10px] text-gray-400">Segura</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="surface-card p-5 flex flex-col items-center animate-fade-in-up" style="animation-delay: 0.4s">
+                        <div class="w-full flex items-center gap-2 mb-4">
+                            <span class="material-symbols-outlined text-blue-400 text-lg">domain</span>
+                            <h3 class="font-bold text-[#111418] dark:text-white text-sm">Uso del Plan</h3>
+                        </div>
+                        <div class="h-32 w-32 relative">
+                            <canvas id="planChart"></canvas>
+                        </div>
+                        <div class="mt-4 text-center">
+                            <div class="text-[#111418] dark:text-white font-bold text-sm" id="statPlanName">Basico</div>
+                            <div class="text-gray-500 text-xs" id="statPlanUsage">0/0 Usados</div>
+                        </div>
+                    </div>
+
+                    <div class="surface-card p-6 flex flex-col justify-center relative overflow-hidden animate-fade-in-up" style="animation-delay: 0.45s">
+                        <div class="absolute -right-4 -top-4 opacity-10">
+                            <span class="material-symbols-outlined text-[100px] text-yellow-500">lightbulb</span>
+                        </div>
+                        <div class="flex items-center gap-2 mb-3">
+                            <span class="material-symbols-outlined text-yellow-500">lightbulb</span>
+                            <h3 class="font-bold text-[#111418] dark:text-white text-sm">Pro Tip</h3>
+                        </div>
+                        <p class="text-gray-400 text-xs leading-relaxed">
+                            Usa la IA integrada para crear sistemas completos con un solo mensaje. Solo describe lo que necesitas y Datium lo construira por ti.
+                        </p>
+                    </div>
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+    <div id="termsModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-md z-[200] flex items-center justify-center p-4">
+        <div class="bg-white dark:bg-[#151f2b] rounded-2xl p-8 w-full max-w-2xl shadow-2xl border border-gray-200 dark:border-gray-800 flex flex-col max-h-[90vh]">
+            <div class="flex items-center gap-3 mb-6">
+                <div class="icon-circle icon-circle-primary w-12 h-12">
+                    <span class="material-symbols-outlined text-2xl">gavel</span>
+                </div>
+                <div>
+                    <h3 class="text-xl font-black text-[#111418] dark:text-white">Actualizacion de Terminos</h3>
+                    <p class="text-xs text-gray-500 font-medium">Es necesario aceptar los nuevos terminos para continuar.</p>
+                </div>
+            </div>
+            <div id="termsContentScroll" class="flex-1 overflow-y-auto pr-4 mb-8 text-sm text-gray-600 dark:text-gray-300 leading-relaxed"></div>
+            <div class="flex flex-col sm:flex-row gap-4">
+                <button onclick="logout()" class="datium-btn datium-btn-ghost flex-1">Rechazar y Salir</button>
+                <button onclick="acceptTerms()" class="datium-btn datium-btn-primary flex-[2]">Aceptar y Continuar</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="{% static 'js/auth.js' %}"></script>
+    <script src="{% static 'js/app.js' %}"></script>
+    <script src="{% static 'js/dashboard.js' %}"></script>
+
+</body>
+
+</html>

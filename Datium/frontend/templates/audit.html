@@ -1,0 +1,149 @@
+{% load static %}
+<!DOCTYPE html>
+<html class="dark" lang="es">
+<head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <title>Datium - Auditoría</title>
+    <link rel="icon" type="image/jpeg" href="{% static 'img/Isotipo modo oscuro.jpeg' %}" id="favicon">
+    <script src="https://cdn.tailwindcss.com/3.4.1?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com" rel="preconnect" />
+    <link crossorigin href="https://fonts.gstatic.com" rel="preconnect" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;900&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet" />
+    <link rel="stylesheet" href="{% static 'css/styles.css' %}">
+    <script>
+        const theme = localStorage.getItem('theme');
+        if (theme === 'dark' || (!theme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
+    </script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: { extend: { colors: { primary: '#137fec', 'background-light': '#f6f7f8', 'background-dark': '#101922' }, fontFamily: { display: ['Inter', 'sans-serif'] } } }
+        }
+    </script>
+</head>
+<body class="font-display bg-background-light dark:bg-background-dark text-[#111418] dark:text-gray-200 overflow-hidden">
+    <div class="flex h-screen w-full">
+        <aside class="fixed inset-y-0 left-0 z-50 w-64 transform -translate-x-full md:relative md:translate-x-0 transition-transform duration-300 ease-in-out bg-white/70 dark:bg-gray-900/70 backdrop-blur-xl border-r border-gray-200 dark:border-gray-800 flex flex-col justify-between flex-shrink-0 h-full">
+            <div>
+                <div class="p-4 flex justify-center items-center h-48">
+                    <img src="{% static 'img/Datium logo modo claro.jpeg' %}" class="h-full w-auto object-contain block dark:hidden hover:scale-105 transition-transform duration-300 p-2" alt="Datium">
+                    <img src="{% static 'img/Datium logo modo oscuro.jpeg' %}" class="h-full w-auto object-contain hidden dark:block hover:scale-105 transition-transform duration-300 p-2" alt="Datium">
+                </div>
+                <div class="px-6 mb-4">
+                    <button onclick="toggleTema()" class="sidebar-link w-full">
+                        <span class="material-symbols-outlined text-lg">dark_mode</span>
+                        <span>Modo Oscuro</span>
+                    </button>
+                </div>
+                <nav class="px-4 flex flex-col gap-1">
+                    <a href="dashboard.html" class="sidebar-link"><span class="material-symbols-outlined">dashboard</span>Dashboard</a>
+                    <a href="connections.html" class="sidebar-link"><span class="material-symbols-outlined">cable</span>Conexiones</a>
+                    <a href="stats.html" class="sidebar-link"><span class="material-symbols-outlined">bar_chart</span>Estadisticas</a>
+                    <a href="audit.html" class="sidebar-link active"><span class="material-symbols-outlined">history</span>Auditoria</a>
+                    <a href="chat.html" class="sidebar-link" style="color: var(--primary)"><span class="material-symbols-outlined">smart_toy</span>Datium IA</a>
+                </nav>
+            </div>
+            <div class="p-4 border-t border-gray-200 dark:border-gray-800 bg-white/30 dark:bg-gray-900/30 backdrop-blur-md">
+                <a href="profile.html" class="flex items-center gap-3 mb-3 px-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors p-2 cursor-pointer group">
+                    <div id="userAvatarContainer" class="h-10 w-10 rounded-full bg-white dark:bg-gray-900 flex items-center justify-center shadow-md ring-2 ring-white dark:ring-gray-800 overflow-hidden group-hover:ring-primary transition-all shrink-0"><span id="userInitial" class="hidden" aria-hidden="true">·</span><img id="userAvatar" src="{% static 'img/Isotipo modo claro.jpeg' %}" class="h-full w-full object-contain p-1.5" alt=""></div>
+                    <div class="flex-1 min-w-0"><p id="userName" class="text-sm font-bold truncate text-[#111418] dark:text-white group-hover:text-primary transition-colors">Usuario</p><p id="userEmail" class="text-xs text-gray-500 truncate">—</p></div>
+                </a>
+                <button onclick="logout()" class="flex items-center gap-2 w-full justify-center px-4 py-2.5 bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-900/30 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/20 rounded-xl text-sm font-bold transition-all"><span class="material-symbols-outlined text-lg">logout</span>Cerrar Sesion</button>
+            </div>
+        </aside>
+
+        <main class="flex-1 h-full overflow-y-auto overflow-x-hidden bg-background-light dark:bg-background-dark relative w-full">
+            <div class="flex items-center justify-between p-4 md:hidden bg-white/80 dark:bg-[#101922]/80 backdrop-blur-md border-b border-gray-200 dark:border-gray-800 sticky top-0 z-30">
+                <div class="flex items-center gap-3">
+                    <button onclick="toggleSidebar()" class="p-2 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300">
+                        <span class="material-symbols-outlined">menu</span>
+                    </button>
+                    <span class="font-bold text-lg text-[#111418] dark:text-white">Auditoría</span>
+                </div>
+                <button onclick="if(typeof showReportModal==='function')showReportModal();else window.location.href='profile.html'" class="p-2 rounded-xl bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400" title="Reportar problema">
+                    <span class="material-symbols-outlined text-lg">flag</span>
+                </button>
+            </div>
+
+            <div class="max-w-7xl mx-auto space-y-6 p-4 md:p-8">
+                <div class="bg-gradient-to-r from-primary to-blue-900 p-5 sm:p-8 rounded-2xl sm:rounded-3xl shadow-2xl text-white relative overflow-hidden">
+                    <div class="absolute -right-12 -top-12 text-white/10 hidden sm:block"><span class="material-symbols-outlined" style="font-size:220px">shield_lock</span></div>
+                    <div class="relative z-10">
+                        <h1 class="text-2xl sm:text-3xl font-black tracking-tight">Centro de Auditoría</h1>
+                        <p class="text-white/80 font-medium text-sm sm:text-base">Actividad, eventos de seguridad, usuarios y trazabilidad de tus sistemas.</p>
+                    </div>
+                </div>
+
+                <div class="bg-white dark:bg-[#151f2b] p-5 rounded-3xl shadow-sm border border-gray-200 dark:border-gray-800 space-y-4">
+                    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-6 gap-4">
+                        <div class="xl:col-span-2">
+                            <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Sistema</label>
+                            <select id="auditSystemSelect" onchange="onSystemSelectChange()" class="w-full px-3 py-3 rounded-xl border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50 text-[#111418] dark:text-white focus:ring-2 focus:ring-primary/50 outline-none text-sm"><option value="-1">Todos los sistemas</option></select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Tipo</label>
+                            <select id="auditTypeSelect" onchange="loadAuditLogs()" class="w-full px-3 py-3 rounded-xl border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50 text-[#111418] dark:text-white focus:ring-2 focus:ring-primary/50 outline-none text-sm"><option value="activity">Actividad</option><option value="security">Seguridad</option></select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Usuario</label>
+                            <select id="userSelect" onchange="loadAuditLogs()" class="w-full px-3 py-3 rounded-xl border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50 text-[#111418] dark:text-white focus:ring-2 focus:ring-primary/50 outline-none text-sm"><option value="">Todos</option></select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Desde</label>
+                            <input type="date" id="dateFrom" onchange="loadAuditLogs()" class="w-full px-3 py-3 rounded-xl border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50 text-[#111418] dark:text-white focus:ring-2 focus:ring-primary/50 outline-none text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Hasta</label>
+                            <input type="date" id="dateTo" onchange="loadAuditLogs()" class="w-full px-3 py-3 rounded-xl border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50 text-[#111418] dark:text-white focus:ring-2 focus:ring-primary/50 outline-none text-sm">
+                        </div>
+                    </div>
+                    <div class="flex flex-col md:flex-row gap-3 items-stretch md:items-center">
+                        <div class="relative flex-1">
+                            <input type="text" id="searchInput" onkeyup="debounceSearch()" placeholder="Buscar por acción, detalles o IP..." class="w-full pl-10 pr-4 py-3 rounded-xl border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50 text-[#111418] dark:text-white focus:ring-2 focus:ring-primary/50 outline-none text-sm">
+                            <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-lg">search</span>
+                        </div>
+                        <button onclick="loadAuditLogs()" class="p-3 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors" title="Refrescar"><span class="material-symbols-outlined">refresh</span></button>
+                        <button onclick="downloadAuditLog()" class="p-3 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-200 dark:hover:bg-emerald-800 transition-colors" title="Exportar CSV"><span class="material-symbols-outlined">download</span></button>
+                    </div>
+                </div>
+
+                <div class="bg-white dark:bg-[#151f2b] rounded-3xl border border-gray-200 dark:border-gray-800 shadow-sm overflow-hidden">
+                    <div id="logsContainer" class="divide-y divide-gray-100 dark:divide-gray-800">
+                        <div class="p-12 text-center text-gray-500 dark:text-gray-400 flex flex-col items-center gap-4 animate-fade-in">
+                            <div class="w-20 h-20 bg-primary/10 rounded-3xl flex items-center justify-center ring-1 ring-primary/20"><span class="material-symbols-outlined text-4xl text-primary opacity-80">search_check</span></div>
+                            <div><h3 class="text-lg font-bold text-[#111418] dark:text-white mb-1">Centro de Auditoría</h3><p class="text-sm max-w-xs">Selecciona un sistema para comenzar a auditar las acciones realizadas por los usuarios.</p></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="{% static 'js/auth.js' %}"></script>
+    <script src="{% static 'js/app.js' %}"></script>
+    <script src="{% static 'js/audit.js' %}"></script>
+    <script>
+        async function loadUserInfo() {
+            const res = await apiFetch('/user/profile');
+            if (res && res.ok) {
+                const userProfile = await res.json();
+                const nameEl = document.getElementById('userName');
+                const emailEl = document.getElementById('userEmail');
+                const initialEl = document.getElementById('userInitial');
+                const avatarEl = document.getElementById('userAvatar');
+                if (nameEl) nameEl.innerText = userProfile.name || 'Usuario';
+                if (emailEl) emailEl.innerText = userProfile.email || '...';
+                if (userProfile.avatarUrl) { avatarEl.src = userProfile.avatarUrl; avatarEl.classList.remove('hidden'); if (initialEl) initialEl.classList.add('hidden'); }
+                else if (initialEl) { initialEl.innerText = (userProfile.name || 'U').charAt(0).toUpperCase(); }
+            }
+        }
+        loadUserInfo();
+    </script>
+</body>
+</html>

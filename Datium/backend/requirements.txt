@@ -1,0 +1,11 @@
+django>=4.2,<6
+djangorestframework>=3.14
+django-cors-headers>=4.3
+Pillow>=10.0
+requests>=2.31
+ollama>=0.3
+pymysql>=1.1
+python-dotenv>=1.0
+django-extensions>=3.2
+reportlab>=4.0
+openpyxl>=3.1

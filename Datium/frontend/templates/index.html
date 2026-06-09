@@ -1,0 +1,496 @@
+{% load static %}
+<!DOCTYPE html>
+<html class="dark" lang="es">
+
+<head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <title>Datium</title>
+    <link rel="icon" type="image/jpeg" href="{% static 'img/Isotipo modo oscuro.jpeg' %}" id="favicon">
+    <script src="https://cdn.tailwindcss.com/3.4.1?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com" rel="preconnect" />
+    <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;900&display=swap" rel="stylesheet" />
+    <link
+        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200"
+        rel="stylesheet" />
+    <link rel="stylesheet" href="{% static 'css/styles.css' %}">
+    <link rel="stylesheet" href="{% static 'css/animations.css' %}">
+    <link rel="stylesheet" href="{% static 'css/components.css' %}">
+    <link rel="stylesheet" href="{% static 'css/loading.css' %}">
+    <script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#3b82f6",
+                        "background-light": "#f1f5f9",
+                        "background-dark": "#0f172a",
+                    },
+                    fontFamily: {
+                        "display": ["Inter", "sans-serif"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+
+        // Init theme immediately to prevent FOUC
+        const theme = localStorage.getItem('theme');
+        if (theme === 'dark' || (!theme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
+
+        function toggleTema() {
+            if (document.documentElement.classList.contains('dark')) {
+                document.documentElement.classList.remove('dark');
+                localStorage.setItem('theme', 'light');
+            } else {
+                document.documentElement.classList.add('dark');
+                localStorage.setItem('theme', 'dark');
+            }
+        }
+    </script>
+</head>
+
+<body class="font-display bg-background-light dark:bg-background-dark text-[#111418] dark:text-gray-200">
+    <div class="relative w-full flex flex-col items-center">
+        <div
+            class="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-blue-100 via-purple-100 to-white dark:from-blue-900/30 dark:via-purple-900/30 dark:to-background-dark -z-10 continuous-background">
+        </div>
+        <header
+            class="fixed top-4 z-50 w-[calc(100%-2rem)] max-w-6xl mx-auto rounded-xl bg-white/70 dark:bg-background-dark/70 backdrop-blur-xl border border-white/30 dark:border-gray-800/60 shadow-lg">
+            <div class="flex items-center justify-between h-16 px-4 sm:px-6 lg:px-8">
+                <div class="flex items-center gap-4">
+                    <div class="logo-container">
+                        <img src="{% static 'img/Datium logo modo claro.jpeg' %}" alt="Datium"
+                            class="block dark:hidden h-14 md:h-20 w-auto object-contain max-w-[280px] md:max-w-none" />
+                        <img src="{% static 'img/Datium logo modo oscuro.jpeg' %}" alt="Datium"
+                            class="hidden dark:block h-14 md:h-20 w-auto object-contain max-w-[280px] md:max-w-none" />
+                    </div>
+                </div>
+                <nav class="hidden md:flex flex-1 justify-center gap-8">
+                    <a class="nav-link text-sm font-medium hover:text-primary dark:text-gray-300 dark:hover:text-primary transition-colors"
+                        href="#features">Características</a>
+                    <a class="nav-link text-sm font-medium hover:text-primary dark:text-gray-300 dark:hover:text-primary transition-colors"
+                        href="#pricing">Planes</a>
+                    <a class="nav-link text-sm font-medium hover:text-primary dark:text-gray-300 dark:hover:text-primary transition-colors"
+                        href="#about">Sobre Nosotros</a>
+                </nav>
+                <div class="flex items-center gap-4">
+                    <button onclick="toggleTema()"
+                        class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 icon-hover">
+                        <span class="material-symbols-outlined" id="tema-icon">dark_mode</span>
+                    </button>
+                    <a href="login.html"
+                        class="hover-smooth flex min-w-[84px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 px-4 bg-background-light dark:bg-gray-800 text-[#111418] dark:text-white text-sm font-bold border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                        <span class="truncate">Iniciar Sesión</span>
+                    </a>
+                    <a href="register.html"
+                        class="btn-primary-hover flex min-w-[84px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 px-4 bg-primary text-white text-sm font-bold shadow-sm hover:bg-primary/90 transition-colors">
+                        <span class="truncate">Regístrate Gratis</span>
+                    </a>
+                </div>
+            </div>
+        </header>
+        <main class="w-full max-w-6xl px-4 sm:px-6 lg:px-8 pt-24">
+            <section class="py-20 md:py-32 fade-in">
+                <div class="text-center max-w-4xl mx-auto">
+                    <div class="flex flex-col gap-6">
+                        <h1
+                            class="text-4xl font-black leading-tight tracking-tighter sm:text-5xl md:text-6xl text-[#111418] dark:text-white">
+                            La Plataforma Definitiva para Crear Sistemas de Registro a tu Medida
+                        </h1>
+                        <h2
+                            class="text-lg font-normal leading-relaxed text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
+                            Diseña, gestiona y escala tus propios sistemas de registro con una potente gestión de
+                            usuarios y planes de suscripción flexibles.
+                        </h2>
+                        <div class="flex flex-wrap gap-4 justify-center mt-6">
+
+                            <a href="register.html"
+                                class="hover-smooth flex min-w-[84px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-12 px-6 bg-background-light dark:bg-gray-800 text-[#111418] dark:text-white text-base font-bold border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                                <span class="truncate">Comienza Gratis</span>
+                            </a>
+                            <a href="#pricing"
+                                class="hover-smooth flex min-w-[84px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-12 px-6 bg-background-light dark:bg-gray-800 text-[#111418] dark:text-white text-base font-bold border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                                <span class="truncate">Ver Planes</span>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </section>
+            <section class="py-16 md:py-24" id="features">
+                <div class="flex flex-col gap-12 items-center">
+                    <div class="text-center max-w-3xl mx-auto">
+                        <h2
+                            class="text-3xl font-bold leading-tight tracking-tight sm:text-4xl text-[#111418] dark:text-white">
+                            Todo lo que necesitas en una sola plataforma</h2>
+                        <p class="mt-4 text-base font-normal leading-relaxed text-gray-600 dark:text-gray-400">
+                            Nuestra plataforma te ofrece todas las herramientas para crear un sistema de registro
+                            robusto y adaptado a tus necesidades específicas.
+                        </p>
+                    </div>
+                    <div class="w-full max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                        <div
+                            class="flex flex-col gap-4 p-6 rounded-xl bg-white/50 dark:bg-background-dark/50 backdrop-blur-xl border border-white/30 dark:border-gray-800/60 shadow-lg transition-all duration-300 hover:border-primary/50 hover:shadow-primary/20 hover-lift animate-on-scroll">
+                            <div
+                                class="flex items-center justify-center size-12 rounded-lg bg-primary/20 text-primary float icon-hover">
+                                <span class="material-symbols-outlined text-3xl">edit_document</span>
+                            </div>
+                            <h3 class="text-lg font-bold text-[#111418] dark:text-white">Formularios Personalizados</h3>
+                            <p class="text-sm font-normal leading-relaxed text-gray-600 dark:text-gray-400">Crea y
+                                personaliza fácilmente formularios de registro con los campos que necesites.</p>
+                        </div>
+                        <div
+                            class="flex flex-col gap-4 p-6 rounded-xl bg-white/50 dark:bg-background-dark/50 backdrop-blur-xl border border-white/30 dark:border-gray-800/60 shadow-lg transition-all duration-300 hover:border-primary/50 hover:shadow-primary/20 hover-lift animate-on-scroll">
+                            <div
+                                class="flex items-center justify-center size-12 rounded-lg bg-primary/20 text-primary float icon-hover">
+                                <span class="material-symbols-outlined text-3xl">manage_accounts</span>
+                            </div>
+                            <h3 class="text-lg font-bold text-[#111418] dark:text-white">Gestión de Usuarios y Roles
+                            </h3>
+                            <p class="text-sm font-normal leading-relaxed text-gray-600 dark:text-gray-400">Asigna roles
+                                y permisos para gestionar el acceso y las capacidades de los usuarios sin problemas.</p>
+                        </div>
+                        <div
+                            class="flex flex-col gap-4 p-6 rounded-xl bg-white/50 dark:bg-background-dark/50 backdrop-blur-xl border border-white/30 dark:border-gray-800/60 shadow-lg transition-all duration-300 hover:border-primary/50 hover:shadow-primary/20 hover-lift animate-on-scroll">
+                            <div
+                                class="flex items-center justify-center size-12 rounded-lg bg-primary/20 text-primary float icon-hover">
+                                <span class="material-symbols-outlined text-3xl">credit_card</span>
+                            </div>
+                            <h3 class="text-lg font-bold text-[#111418] dark:text-white">Planes de Suscripción</h3>
+                            <p class="text-sm font-normal leading-relaxed text-gray-600 dark:text-gray-400">Monetiza tu
+                                sistema creando y gestionando diferentes niveles de suscripción.</p>
+                        </div>
+                        <div
+                            class="flex flex-col gap-4 p-6 rounded-xl bg-white/50 dark:bg-background-dark/50 backdrop-blur-xl border border-white/30 dark:border-gray-800/60 shadow-lg transition-all duration-300 hover:border-primary/50 hover:shadow-primary/20 hover-lift animate-on-scroll">
+                            <div
+                                class="flex items-center justify-center size-12 rounded-lg bg-primary/20 text-primary float icon-hover">
+                                <span class="material-symbols-outlined text-3xl">bar_chart</span>
+                            </div>
+                            <h3 class="text-lg font-bold text-[#111418] dark:text-white">Estadísticas y Reportes</h3>
+                            <p class="text-sm font-normal leading-relaxed text-gray-600 dark:text-gray-400">Visualiza
+                                tus datos con gráficas interactivas y exporta reportes en múltiples formatos.</p>
+                        </div>
+                        <div
+                            class="flex flex-col gap-4 p-6 rounded-xl bg-white/50 dark:bg-background-dark/50 backdrop-blur-xl border border-white/30 dark:border-gray-800/60 shadow-lg transition-all duration-300 hover:border-primary/50 hover:shadow-primary/20 hover-lift animate-on-scroll">
+                            <div
+                                class="flex items-center justify-center size-12 rounded-lg bg-primary/20 text-primary float icon-hover">
+                                <span class="material-symbols-outlined text-3xl">security</span>
+                            </div>
+                            <h3 class="text-lg font-bold text-[#111418] dark:text-white">Seguridad Avanzada</h3>
+                            <p class="text-sm font-normal leading-relaxed text-gray-600 dark:text-gray-400">Sistema de
+                                seguridad con contraseñas generales o individuales y auditoría completa.</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+            <section class="py-16 md:py-24" id="pricing">
+                <div class="flex flex-col gap-12 items-center">
+                    <div class="text-center max-w-3xl mx-auto">
+                        <h2
+                            class="text-3xl font-bold leading-tight tracking-tight sm:text-4xl text-[#111418] dark:text-white">
+                            Elige el plan perfecto para ti</h2>
+                        <p class="mt-4 text-base font-normal leading-relaxed text-gray-600 dark:text-gray-400">Precios
+                            simples y transparentes que escalan con tus necesidades. Sin cargos ocultos.</p>
+                    </div>
+                    <div class="w-full max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                        <!-- Free Plan -->
+                        <div
+                            class="flex flex-col gap-6 rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 overflow-hidden shadow-xl hover-lift animate-on-scroll">
+                            <div class="px-6 py-8 bg-gray-50/50 dark:bg-gray-800/50">
+                                <h3 class="text-xl font-black text-[#111418] dark:text-white mb-1">Free</h3>
+                                <p class="flex items-baseline gap-1 text-[#111418] dark:text-white">
+                                    <span class="text-5xl font-black tracking-tighter">$0</span>
+                                </p>
+                            </div>
+                            <div class="px-6 pb-8 flex flex-col h-full">
+                                <div class="flex flex-col gap-4 mb-8">
+                                    <div class="flex items-center gap-3 text-sm text-gray-600 dark:text-gray-400">
+                                        <span
+                                            class="material-symbols-outlined text-green-500 font-bold">check_circle</span>
+                                        1 Sistema
+                                    </div>
+                                    <div class="flex items-center gap-3 text-sm text-gray-600 dark:text-gray-400">
+                                        <span
+                                            class="material-symbols-outlined text-green-500 font-bold">check_circle</span>
+                                        3 Tablas por sistema
+                                    </div>
+                                    <div class="flex items-center gap-3 text-sm text-gray-600 dark:text-gray-400">
+                                        <span
+                                            class="material-symbols-outlined text-green-500 font-bold">check_circle</span>
+                                        1 GB de almacen
+                                    </div>
+                                    <div
+                                        class="flex items-center gap-3 text-sm text-gray-400 dark:text-gray-600 opacity-50">
+                                        <span class="material-symbols-outlined text-red-400">cancel</span>
+                                        Estadísticas avanzadas
+                                    </div>
+                                    <div
+                                        class="flex items-center gap-3 text-sm text-gray-400 dark:text-gray-600 opacity-50">
+                                        <span class="material-symbols-outlined text-red-400">cancel</span>
+                                        Exportación de datos
+                                    </div>
+                                </div>
+                                <a href="register.html?plan=free"
+                                    class="mt-auto w-full py-4 rounded-xl bg-gray-100 dark:bg-gray-800 text-[#111418] dark:text-white font-bold text-center hover:bg-gray-200 dark:hover:bg-gray-700 transition-all">
+                                    Seleccionar
+                                </a>
+                            </div>
+                        </div>
+
+                        <!-- Pro Plan -->
+                        <div
+                            class="flex flex-col gap-6 rounded-2xl border-2 border-primary bg-white dark:bg-gray-900 overflow-hidden shadow-2xl shadow-primary/20 relative hover-lift animate-on-scroll">
+                            <div class="absolute top-4 right-4 capitalize">
+                                <span
+                                    class="bg-primary text-white text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest">Popular</span>
+                            </div>
+                            <div class="px-6 py-8 bg-primary/5 dark:bg-primary/10">
+                                <h3 class="text-xl font-black text-[#111418] dark:text-white mb-1">Pro</h3>
+                                <p class="flex items-baseline gap-1 text-[#111418] dark:text-white">
+                                    <span class="text-5xl font-black tracking-tighter">$10</span>
+                                    <span class="text-sm font-bold text-gray-500">/mes</span>
+                                </p>
+                            </div>
+                            <div class="px-6 pb-8 flex flex-col h-full">
+                                <div class="flex flex-col gap-4 mb-8">
+                                    <div class="flex items-center gap-3 text-sm text-gray-600 dark:text-gray-400">
+                                        <span
+                                            class="material-symbols-outlined text-green-500 font-bold">check_circle</span>
+                                        5 Sistemas
+                                    </div>
+                                    <div class="flex items-center gap-3 text-sm text-gray-600 dark:text-gray-400">
+                                        <span
+                                            class="material-symbols-outlined text-green-500 font-bold">check_circle</span>
+                                        10 Tablas por sistema
+                                    </div>
+                                    <div class="flex items-center gap-3 text-sm text-gray-600 dark:text-gray-400">
+                                        <span
+                                            class="material-symbols-outlined text-green-500 font-bold">check_circle</span>
+                                        15 GB de almacen
+                                    </div>
+                                    <div class="flex items-center gap-3 text-sm text-gray-600 dark:text-gray-400">
+                                        <span
+                                            class="material-symbols-outlined text-green-500 font-bold">check_circle</span>
+                                        Estadísticas avanzadas
+                                    </div>
+                                    <div class="flex items-center gap-3 text-sm text-gray-600 dark:text-gray-400">
+                                        <span
+                                            class="material-symbols-outlined text-green-500 font-bold">check_circle</span>
+                                        Exportación CSV / JSON
+                                    </div>
+                                </div>
+                                <a href="register.html?plan=pro"
+                                    class="mt-auto w-full py-4 rounded-xl bg-primary text-white font-bold text-center shadow-lg shadow-primary/30 hover:bg-blue-600 transition-all">
+                                    Seleccionar
+                                </a>
+                            </div>
+                        </div>
+
+                        <!-- Corporate Plan -->
+                        <div
+                            class="flex flex-col gap-6 rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 overflow-hidden shadow-xl hover-lift animate-on-scroll">
+                            <div class="px-6 py-8 bg-gray-50/50 dark:bg-gray-800/50">
+                                <div class="flex justify-between items-start">
+                                    <h3 class="text-xl font-black text-[#111418] dark:text-white mb-1">Empresarial</h3>
+                                    <span
+                                        class="bg-gray-900 dark:bg-white dark:text-gray-900 text-white text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest">Premium</span>
+                                </div>
+                                <p class="flex items-baseline gap-1 text-[#111418] dark:text-white">
+                                    <span class="text-5xl font-black tracking-tighter">$50</span>
+                                    <span class="text-sm font-bold text-gray-500">/mes</span>
+                                </p>
+                            </div>
+                            <div class="px-6 pb-8 flex flex-col h-full">
+                                <div class="flex flex-col gap-4 mb-8">
+                                    <div class="flex items-center gap-3 text-sm text-gray-600 dark:text-gray-400">
+                                        <span
+                                            class="material-symbols-outlined text-green-500 font-bold">check_circle</span>
+                                        Sistemas Ilimitados
+                                    </div>
+                                    <div class="flex items-center gap-3 text-sm text-gray-600 dark:text-gray-400">
+                                        <span
+                                            class="material-symbols-outlined text-green-500 font-bold">check_circle</span>
+                                        Tablas Ilimitadas
+                                    </div>
+                                    <div class="flex items-center gap-3 text-sm text-gray-600 dark:text-gray-400">
+                                        <span
+                                            class="material-symbols-outlined text-green-500 font-bold">check_circle</span>
+                                        Almacenamiento Ilimitado
+                                    </div>
+                                    <div class="flex items-center gap-3 text-sm text-gray-600 dark:text-gray-400">
+                                        <span
+                                            class="material-symbols-outlined text-green-500 font-bold">check_circle</span>
+                                        Estadísticas completas
+                                    </div>
+                                    <div class="flex items-center gap-3 text-sm text-gray-600 dark:text-gray-400">
+                                        <span
+                                            class="material-symbols-outlined text-green-500 font-bold">check_circle</span>
+                                        Soporte dedicado 24/7
+                                    </div>
+                                </div>
+                                <a href="register.html?plan=corporate"
+                                    class="mt-auto w-full py-4 rounded-xl bg-gray-900 dark:bg-white text-white dark:text-gray-900 font-bold text-center hover:opacity-90 transition-all">
+                                    Seleccionar
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+            <section class="py-16 md:py-24" id="about">
+                <div class="flex flex-col gap-12 items-center">
+                    <div class="text-center max-w-3xl mx-auto">
+                        <h2
+                            class="text-3xl font-bold leading-tight tracking-tight sm:text-4xl text-[#111418] dark:text-white">
+                            Sobre Datium</h2>
+                        <p class="mt-4 text-base font-normal leading-relaxed text-gray-600 dark:text-gray-400">
+                            Datium es una plataforma moderna diseñada para empresas y profesionales que necesitan
+                            gestionar sus datos de forma eficiente. Con seguridad
+                            avanzada y herramientas de análisis potentes.
+                        </p>
+                    </div>
+                    <div class="w-full max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                        <div
+                            class="flex flex-col items-center text-center p-6 rounded-xl bg-white/50 dark:bg-background-dark/50 backdrop-blur-xl border border-white/30 dark:border-gray-800/60 shadow-lg hover-lift animate-on-scroll">
+                            <div
+                                class="flex items-center justify-center size-48 rounded-full bg-primary/20 text-primary mb-4 icon-hover">
+                                <span class="material-symbols-outlined text-9xl">speed</span>
+                            </div>
+                            <h3 class="text-xl font-bold text-[#111418] dark:text-white mb-2">Rápido</h3>
+                            <p class="text-sm text-gray-600 dark:text-gray-400">Procesamiento instantáneo de datos</p>
+                        </div>
+                        <div
+                            class="flex flex-col items-center text-center p-6 rounded-xl bg-white/50 dark:bg-background-dark/50 backdrop-blur-xl border border-white/30 dark:border-gray-800/60 shadow-lg hover-lift animate-on-scroll">
+                            <div
+                                class="flex items-center justify-center size-48 rounded-full bg-primary/20 text-primary mb-4 icon-hover">
+                                <span class="material-symbols-outlined text-9xl">shield</span>
+                            </div>
+                            <h3 class="text-xl font-bold text-[#111418] dark:text-white mb-2">Seguro</h3>
+                            <p class="text-sm text-gray-600 dark:text-gray-400">Encriptación de extremo a extremo</p>
+                        </div>
+                        <div
+                            class="flex flex-col items-center text-center p-6 rounded-xl bg-white/50 dark:bg-background-dark/50 backdrop-blur-xl border border-white/30 dark:border-gray-800/60 shadow-lg hover-lift animate-on-scroll">
+                            <div
+                                class="flex items-center justify-center size-48 rounded-full bg-primary/20 text-primary mb-4 icon-hover">
+                                <span class="material-symbols-outlined text-9xl">groups</span>
+                            </div>
+                            <h3 class="text-xl font-bold text-[#111418] dark:text-white mb-2">Colaborativo</h3>
+                            <p class="text-sm text-gray-600 dark:text-gray-400">Trabaja en equipo sin límites</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+            <section class="py-16 md:py-24">
+                <div class="flex flex-col gap-12 items-center">
+                    <div class="text-center max-w-3xl mx-auto">
+                        <h2
+                            class="text-3xl font-bold leading-tight tracking-tight sm:text-4xl text-[#111418] dark:text-white">
+                            ¿Por qué elegir Datium?</h2>
+                    </div>
+                    <div class="w-full max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <div
+                            class="flex gap-4 p-6 rounded-xl bg-white/50 dark:bg-background-dark/50 backdrop-blur-xl border border-white/30 dark:border-gray-800/60 shadow-lg hover-lift animate-on-scroll">
+                            <div
+                                class="flex items-center justify-center size-36 rounded-lg bg-primary/20 text-primary icon-hover flex-shrink-0">
+                                <span class="material-symbols-outlined text-9xl">cloud_sync</span>
+                            </div>
+                            <div>
+                                <h3 class="text-lg font-bold text-[#111418] dark:text-white mb-2">Sincronización en la
+                                    Nube</h3>
+                                <p class="text-sm text-gray-600 dark:text-gray-400">Tus datos siempre disponibles desde
+                                    cualquier dispositivo</p>
+                            </div>
+                        </div>
+                        <div
+                            class="flex gap-4 p-6 rounded-xl bg-white/50 dark:bg-background-dark/50 backdrop-blur-xl border border-white/30 dark:border-gray-800/60 shadow-lg hover-lift animate-on-scroll">
+                            <div
+                                class="flex items-center justify-center size-36 rounded-lg bg-primary/20 text-primary icon-hover flex-shrink-0">
+                                <span class="material-symbols-outlined text-9xl">download</span>
+                            </div>
+                            <div>
+                                <h3 class="text-lg font-bold text-[#111418] dark:text-white mb-2">Exportación Múltiple
+                                </h3>
+                                <p class="text-sm text-gray-600 dark:text-gray-400">Exporta a PDF, Excel, CSV, JSON y
+                                    SQL</p>
+                            </div>
+                        </div>
+                        <div
+                            class="flex gap-4 p-6 rounded-xl bg-white/50 dark:bg-background-dark/50 backdrop-blur-xl border border-white/30 dark:border-gray-800/60 shadow-lg hover-lift animate-on-scroll">
+                            <div
+                                class="flex items-center justify-center size-36 rounded-lg bg-primary/20 text-primary icon-hover flex-shrink-0">
+                                <span class="material-symbols-outlined text-9xl">history</span>
+                            </div>
+                            <div>
+                                <h3 class="text-lg font-bold text-[#111418] dark:text-white mb-2">Historial Completo
+                                </h3>
+                                <p class="text-sm text-gray-600 dark:text-gray-400">Auditoría detallada de todas las
+                                    acciones</p>
+                            </div>
+                        </div>
+                        <div
+                            class="flex gap-4 p-6 rounded-xl bg-white/50 dark:bg-background-dark/50 backdrop-blur-xl border border-white/30 dark:border-gray-800/60 shadow-lg hover-lift animate-on-scroll">
+                            <div
+                                class="flex items-center justify-center size-36 rounded-lg bg-primary/20 text-primary icon-hover flex-shrink-0">
+                                <span class="material-symbols-outlined text-9xl">tune</span>
+                            </div>
+                            <div>
+                                <h3 class="text-lg font-bold text-[#111418] dark:text-white mb-2">Personalización Total
+                                </h3>
+                                <p class="text-sm text-gray-600 dark:text-gray-400">Adapta cada aspecto a tus
+                                    necesidades</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+        <footer class="w-full border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 mt-16">
+            <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                <div class="flex flex-col md:flex-row justify-between items-center gap-6">
+                    <div class="flex items-center gap-3">
+                        <div class="logo-container">
+                            <img src="{% static 'img/Datium logo modo claro.jpeg' %}" alt="Datium"
+                                class="block dark:hidden"
+                                style="height: 60px; width: auto; max-width: 250px; object-fit: contain;" />
+                            <img src="{% static 'img/Datium logo modo oscuro.jpeg' %}" alt="Datium"
+                                class="hidden dark:block"
+                                style="height: 60px; width: auto; max-width: 250px; object-fit: contain;" />
+                        </div>
+                        <p class="text-sm text-gray-600 dark:text-gray-400">© 2025 Datium. Todos los derechos
+                            reservados.</p>
+                    </div>
+                    <div class="flex items-center gap-6">
+                        <a class="text-sm text-gray-600 dark:text-gray-400 hover:text-primary dark:hover:text-primary transition-colors"
+                            href="#">Términos de Servicio</a>
+                        <a class="text-sm text-gray-600 dark:text-gray-400 hover:text-primary dark:hover:text-primary transition-colors"
+                            href="#">Política de Privacidad</a>
+                        <a class="text-sm text-gray-600 dark:text-gray-400 hover:text-primary dark:hover:text-primary transition-colors"
+                            href="https://wa.me/573219957284?text=Hola,%20quiero%20saber%20más%20sobre%20Datium"
+                            target="_blank">Contacto</a>
+                    </div>
+                </div>
+            </div>
+        </footer>
+        <a href="https://wa.me/573219957284?text=Hola,%20quiero%20saber%20más%20sobre%20Datium" target="_blank"
+            class="whatsapp-button" title="Contáctanos por WhatsApp">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg" alt="WhatsApp"
+                class="w-8 h-8" />
+        </a>
+    </div>
+
+    <script src="{% static 'js/auth.js' %}?v=2"></script>
+    <script src="{% static 'js/animations.js' %}"></script>
+</body>
+
+</html>

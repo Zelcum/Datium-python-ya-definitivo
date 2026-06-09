@@ -1,0 +1,20 @@
+.datium-logo {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1rem;
+    text-decoration: none;
+}
+
+.datium-logo img {
+    height: 1.75rem;
+    width: auto;
+    object-fit: contain;
+}
+
+.datium-logo-text {
+    font-size: 1.125rem;
+    font-weight: 900;
+    letter-spacing: -0.05em;
+    color: var(--text);
+}

@@ -1,0 +1,523 @@
+{% load static %}
+<!DOCTYPE html>
+<html class="dark" lang="es">
+
+<head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <title>Datium</title>
+    <link rel="icon" type="image/jpeg" href="{% static 'img/Isotipo modo oscuro.jpeg' %}" id="favicon">
+    <script src="https://cdn.tailwindcss.com/3.4.1?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com" rel="preconnect" />
+    <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;900&display=swap" rel="stylesheet" />
+    <link
+        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200"
+        rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
+    <link rel="stylesheet" href="{% static 'css/styles.css' %}">
+    <link rel="stylesheet" href="{% static 'css/animations.css' %}">
+    <link rel="stylesheet" href="{% static 'css/components.css' %}">
+    <link rel="stylesheet" href="{% static 'css/loading.css' %}">
+    <script>
+        const theme = localStorage.getItem('theme');
+        if (theme === 'dark' || (!theme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
+    </script>
+    <script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#3b82f6",
+                        "background-light": "#f1f5f9",
+                        "background-dark": "#0f172a",
+                    },
+                    fontFamily: {
+                        "display": ["Inter", "sans-serif"]
+                    },
+                },
+            },
+        }
+    </script>
+    <style>
+        ::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+
+        .dark ::-webkit-scrollbar-thumb {
+            background: #374151;
+        }
+    </style>
+</head>
+
+<body
+    class="font-display bg-background-light dark:bg-background-dark text-[#111418] dark:text-gray-200 overflow-hidden">
+
+    <div class="flex h-screen w-full">
+
+        <aside
+            class="fixed inset-y-0 left-0 z-50 w-64 transform -translate-x-full md:relative md:translate-x-0 transition-transform duration-300 ease-in-out bg-white/70 dark:bg-gray-900/70 backdrop-blur-xl border-r border-gray-200 dark:border-gray-800 flex flex-col justify-between flex-shrink-0 h-full">
+            <div>
+
+                <div class="p-4 flex justify-center items-center h-60">
+                    <img src="{% static 'img/Datium logo modo claro.jpeg' %}"
+                        class="h-full w-auto object-contain block dark:hidden hover:scale-105 transition-transform duration-300 p-2"
+                        alt="Datium">
+                    <img src="{% static 'img/Datium logo modo oscuro.jpeg' %}"
+                        class="h-full w-auto object-contain hidden dark:block hover:scale-105 transition-transform duration-300 p-2"
+                        alt="Datium">
+                </div>
+
+
+                <div class="px-6 mb-6">
+                    <button onclick="toggleTema()"
+                        class="flex items-center gap-3 w-full p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-sm font-medium text-gray-600 dark:text-gray-400">
+                        <span class="material-symbols-outlined text-xl">dark_mode</span>
+                        <span>Modo Oscuro</span>
+                    </button>
+                </div>
+
+
+                <nav class="px-4 flex flex-col gap-2">
+                    <a href="dashboard.html"
+                        class="flex items-center gap-3 px-4 py-3 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl text-sm font-medium transition-colors">
+                        <span class="material-symbols-outlined">dns</span>
+                        Dashboard
+                    </a>
+
+                    <a href="connections.html"
+                        class="flex items-center gap-3 px-4 py-3 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl text-sm font-medium transition-colors">
+                        <span class="material-symbols-outlined">cable</span>
+                        Conexiones
+                    </a>                    <a href="stats.html"
+                        class="flex items-center gap-3 px-4 py-3 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl text-sm font-medium transition-colors">
+                        <span class="material-symbols-outlined">bar_chart</span>
+                        Estadísticas
+                    </a>
+
+
+                    <a href="audit.html"
+                        class="flex items-center gap-3 px-4 py-3 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl text-sm font-medium transition-colors">
+                        <span class="material-symbols-outlined">history</span>
+                        Auditoría
+                    </a>
+                </nav>
+            </div>
+
+
+            <div
+                class="p-4 border-t border-gray-200 dark:border-gray-800 bg-white/30 dark:bg-gray-900/30 backdrop-blur-md">
+
+                <a href="profile.html"
+                    class="flex items-center gap-3 mb-4 px-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors p-2 cursor-pointer group">
+                    <div id="userAvatarContainer"
+                        class="h-10 w-10 rounded-full bg-white dark:bg-gray-900 flex items-center justify-center shadow-md ring-2 ring-white dark:ring-gray-800 overflow-hidden group-hover:ring-primary transition-all shrink-0">
+                        <span id="userInitial" class="hidden" aria-hidden="true">·</span>
+                        <img id="userAvatar" src="{% static 'img/Isotipo modo claro.jpeg' %}" class="h-full w-full object-contain p-1.5" alt="">
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <p id="userName"
+                            class="text-sm font-bold truncate text-[#111418] dark:text-white group-hover:text-primary transition-colors">
+                            Usuario
+                        </p>
+                        <p id="userEmail" class="text-xs text-gray-500 truncate">—</p>
+                    </div>
+                </a>
+
+                <button onclick="logout()"
+                    class="flex items-center gap-2 w-full justify-center px-4 py-2.5 bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-900/30 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/20 rounded-xl text-sm font-bold transition-all shadow-sm">
+                    <span class="material-symbols-outlined text-lg">logout</span>
+                    Cerrar Sesión
+                </button>
+            </div>
+        </aside>
+
+        <main
+            class="flex-1 h-full overflow-y-auto overflow-x-hidden bg-background-light dark:bg-background-dark relative scroll-smooth p-4 md:p-8 w-full">
+
+            <!-- Mobile Header -->
+
+            <div class="flex items-center justify-between mb-8 md:hidden">
+                <div class="flex items-center gap-3">
+                    <button onclick="toggleSidebar()"
+                        class="p-2 rounded-xl bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 shadow-sm">
+                        <span class="material-symbols-outlined">menu</span>
+                    </button>
+                    <span class="font-bold text-lg text-[#111418] dark:text-white">Tabla</span>
+                </div>
+                <button onclick="if(typeof showReportModal==='function')showReportModal();else window.location.href='profile.html'" class="p-2 rounded-xl bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400" title="Reportar problema">
+                    <span class="material-symbols-outlined text-lg">flag</span>
+                </button>
+            </div>
+
+            <div class="max-w-7xl mx-auto space-y-6">
+
+                <div class="flex flex-col items-center justify-center text-center space-y-4 mb-8 pt-8">
+                    <div class="relative group">
+                        <img id="systemLogo" src="" alt="Logo"
+                            class="w-24 h-24 rounded-2xl object-cover shadow-2xl border-4 border-white dark:border-gray-800">
+                    </div>
+
+                    <div>
+                        <h1 id="tableName" class="text-3xl font-black text-[#111418] dark:text-white mb-2">
+                            Cargando...
+                        </h1>
+                        <p id="tableDesc" class="text-gray-500 dark:text-gray-400 max-w-lg mx-auto">...</p>
+                    </div>
+
+                    <div class="w-full max-w-5xl flex flex-col items-center gap-3 mt-6">
+                        <div class="flex-1 w-full relative">
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <span class="material-symbols-outlined text-gray-400">search</span>
+                            </div>
+                            <input type="text" id="recordSearch" placeholder="Buscar registros..."
+                                class="w-full pl-10 pr-4 py-3 bg-white dark:bg-[#151f2b] border border-gray-200 dark:border-gray-800 rounded-xl text-sm focus:ring-2 focus:ring-primary/50 outline-none transition-all dark:text-white shadow-sm">
+                        </div>
+
+                        <div class="flex flex-wrap gap-2 w-full md:w-auto justify-center md:justify-start">
+                            <button onclick="openRegisterModal()"
+                                class="flex-1 sm:flex-none flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-primary hover:bg-blue-600 text-white font-bold transition-colors shadow-lg shadow-primary/30 text-sm whitespace-nowrap">
+                                <span class="material-symbols-outlined text-lg">add_circle</span>
+                                Registrar
+                            </button>
+
+                            <button onclick="openImportModal()"
+                                class="flex-1 sm:flex-none flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 font-bold hover:border-primary/50 hover:text-primary transition-all shadow-sm text-sm whitespace-nowrap group">
+                                <span class="material-symbols-outlined text-lg group-hover:rotate-12 transition-transform">upload</span>
+                                Importar
+                            </button>
+
+                            <button onclick="showImportGuide()"
+                                class="flex-1 sm:flex-none flex items-center justify-center p-3 rounded-xl bg-amber-50 dark:bg-amber-900/10 text-amber-600 dark:text-amber-500 hover:bg-amber-100 transition-all shadow-sm" title="Guía de Importación">
+                                <span class="material-symbols-outlined">help_outline</span>
+                            </button>
+
+                            <div class="relative" id="exportDropdown">
+                                <button onclick="toggleExportMenu(event)"
+                                    class="h-full flex items-center gap-2 px-4 py-3 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors font-medium text-sm">
+                                    <span class="material-symbols-outlined text-lg">download</span>
+                                    <span class="hidden sm:inline">Exportar</span>
+                                    <span class="material-symbols-outlined text-sm">expand_more</span>
+                                </button>
+                                <div id="exportMenu"
+                                    class="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-100 dark:border-gray-700 hidden z-50 overflow-hidden">
+                                    <button onclick="exportTable('csv');closeExportMenu()"
+                                        class="w-full text-left px-4 py-3 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-2 transition-colors">
+                                        <span class="material-symbols-outlined text-green-500">csv</span> CSV
+                                    </button>
+                                    <button onclick="exportTable('xlsx');closeExportMenu()"
+                                        class="w-full text-left px-4 py-3 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-2 transition-colors">
+                                        <span class="material-symbols-outlined text-blue-500">table_view</span> Excel
+                                    </button>
+                                    <button onclick="exportTable('pdf');closeExportMenu()"
+                                        class="w-full text-left px-4 py-3 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-2 transition-colors">
+                                        <span class="material-symbols-outlined text-red-500">picture_as_pdf</span> PDF
+                                    </button>
+                                </div>
+                            </div>
+
+                            <button onclick="openStyleModal()" title="Estilos"
+                                class="flex items-center justify-center h-12 w-12 rounded-xl bg-primary/10 text-primary hover:bg-primary/15 transition-all shadow-sm border border-primary/20 group">
+                                <span class="material-symbols-outlined text-[22px] group-hover:rotate-180 transition-transform">palette</span>
+                            </button>
+
+                            <button onclick="goBack()"
+                                class="flex items-center gap-2 px-4 py-3 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors font-medium text-sm">
+                                <span class="material-symbols-outlined text-lg">arrow_back</span>
+                                <span class="hidden sm:inline">Volver</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 gap-6">
+                    <!-- Bulk Actions -->
+                    <div id="bulkActionMenu" class="hidden flex items-center justify-between bg-primary/5 px-6 py-4 rounded-2xl animate-fade-in border border-primary/20 backdrop-blur-md">
+                        <div class="flex items-center gap-4">
+                            <div class="w-10 h-10 bg-primary/20 rounded-xl flex items-center justify-center text-primary shadow-xl shadow-primary/10">
+                                <span class="material-symbols-outlined">check_circle</span>
+                            </div>
+                            <div>
+                                <h4 id="selectedCountText" class="text-sm font-black text-primary uppercase tracking-tight">0 Seleccionados</h4>
+                                <p class="text-[9px] text-primary/60 font-bold uppercase tracking-wider">Acciones disponibles para registros</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <button onclick="bulkDelete()" class="px-5 py-2.5 bg-red-500 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-red-600 transition-all shadow-lg shadow-red-500/20 active:scale-95 flex items-center gap-2">
+                                <span class="material-symbols-outlined text-sm">delete</span>
+                                Eliminar Selección
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="space-y-6">
+                        <div
+                            class="bg-white dark:bg-[#151f2b] rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm overflow-hidden">
+                            <div
+                                class="p-4 border-b border-gray-200 dark:border-gray-800 flex justify-between items-center bg-gray-50/50 dark:bg-gray-900/50">
+                                <h2
+                                    class="font-bold text-[#111418] dark:text-white flex items-center gap-2 text-sm uppercase tracking-widest">
+                                    <span class="material-symbols-outlined text-gray-400">dataset</span>
+                                    Datos Registrados
+                                </h2>
+                                <span id="recordCount"
+                                    class="text-xs font-bold text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded-md">0</span>
+                            </div>
+                            <div class="overflow-x-auto overflow-y-auto custom-scrollbar">
+                                <div class="min-w-[800px] lg:min-w-0">
+                                    <table class="w-full text-sm text-left">
+                                    <thead
+                                        class="text-xs text-gray-500 dark:text-gray-400 uppercase bg-gray-50 dark:bg-gray-900/50 border-b border-gray-200 dark:border-gray-800">
+                                        <tr id="tableHead">
+
+                                        </tr>
+                                    </thead>
+                                    <tbody id="tableBody"
+                                        class="divide-y divide-gray-100 dark:divide-gray-800 text-gray-600 dark:text-gray-300">
+
+                                    </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+    <div id="registerModal" class="fixed inset-0 z-[100] hidden" aria-labelledby="modal-title" role="dialog"
+        aria-modal="true">
+        <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity backdrop-blur-sm"
+            onclick="closeRegisterModal()"></div>
+
+        <div class="fixed inset-0 z-10 overflow-y-auto">
+            <div class="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
+                <div
+                    class="relative transform overflow-hidden rounded-3xl bg-white dark:bg-[#1a2634] text-left shadow-2xl transition-all sm:my-8 sm:w-full sm:max-w-xl border border-gray-200 dark:border-gray-700">
+
+                    <div
+                        class="bg-gray-50 dark:bg-[#151f2b] px-6 py-4 border-b border-gray-100 dark:border-gray-800 flex justify-between items-start">
+                        <div>
+                            <h3 id="modalTitle"
+                                class="text-xl font-bold text-[#111418] dark:text-white flex items-center gap-2">
+                                <span class="material-symbols-outlined text-primary">post_add</span>
+                                Registrar Datos
+                            </h3>
+                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Complete el formulario para añadir
+                                un nuevo registro.</p>
+                        </div>
+                        <button onclick="closeRegisterModal()"
+                            class="text-gray-400 hover:text-gray-500 dark:hover:text-gray-300 p-1">
+                            <span class="material-symbols-outlined">close</span>
+                        </button>
+                    </div>
+
+                    <div class="px-6 py-6 max-h-[70vh] overflow-y-auto">
+                        <form id="recordForm" class="space-y-4">
+                            <div id="modalFieldsContainer" class="flex flex-col gap-4">
+                            </div>
+                        </form>
+                    </div>
+
+                    <div
+                        class="bg-gray-50 dark:bg-[#151f2b] px-6 py-4 border-t border-gray-100 dark:border-gray-800 flex justify-end gap-3">
+                        <button type="button" onclick="closeRegisterModal()"
+                            class="px-4 py-2 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 font-bold text-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                            Cancelar
+                        </button>
+                        <button type="button" onclick="saveRecord()"
+                            class="px-4 py-2 rounded-xl bg-primary hover:bg-blue-600 text-white font-bold text-sm transition-colors shadow-lg shadow-primary/20 flex items-center gap-2">
+                            <span class="material-symbols-outlined text-lg">save</span>
+                            Guardar
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="{% static 'js/auth.js' %}"></script>
+    <script src="{% static 'js/app.js' %}"></script>
+    <script src="{% static 'js/table.js' %}"></script>
+
+
+    <script>
+    function toggleExportMenu(e) {
+        e.stopPropagation();
+        const menu = document.getElementById('exportMenu');
+        menu.classList.toggle('hidden');
+    }
+    function closeExportMenu() {
+        document.getElementById('exportMenu').classList.add('hidden');
+    }
+    document.addEventListener('click', function(e) {
+        const dd = document.getElementById('exportDropdown');
+        if (dd && !dd.contains(e.target)) closeExportMenu();
+    });
+    </script>
+    <!-- Import Modal -->
+    <div id="importModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white dark:bg-gray-800 w-full max-w-xl rounded-[2.5rem] shadow-2xl overflow-hidden animate-zoom-in">
+            <div class="p-8">
+                <div class="flex items-center justify-between mb-6">
+                    <h3 class="text-2xl font-black text-gray-900 dark:text-white italic">Importar Registros</h3>
+                    <button onclick="closeImportModal()" class="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-400 hover:text-red-500 transition-all">
+                        <span class="material-symbols-outlined">close</span>
+                    </button>
+                </div>
+                
+                <div class="space-y-6">
+                    <div class="relative group">
+                        <input type="file" id="importFile" accept=".json,.csv" class="hidden" onchange="handleImportFile(this)">
+                        <div onclick="document.getElementById('importFile').click()" class="border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-2xl p-8 text-center cursor-pointer hover:border-primary/50 hover:bg-primary/5 transition-all group">
+                            <span class="material-symbols-outlined text-4xl text-gray-300 group-hover:text-primary transition-colors mb-2">cloud_upload</span>
+                            <div class="text-xs font-black text-gray-500 uppercase tracking-widest">Suelte el archivo o haga clic aquí</div>
+                            <div class="text-[10px] text-gray-400 mt-1">Soportamos JSON y CSV (mapeo automático)</div>
+                        </div>
+                    </div>
+
+                    <div id="importPreview" class="hidden">
+                        <div class="p-4 rounded-2xl bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-800 shadow-inner">
+                            <div class="flex items-center justify-between mb-2">
+                                <span id="importStats" class="text-[10px] font-black text-primary uppercase tracking-widest"></span>
+                                <span class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Vista Previa</span>
+                            </div>
+                            <div id="importPreviewRows" class="space-y-2 max-h-40 overflow-y-auto pr-2 custom-scrollbar text-[10px] font-mono text-gray-500 break-all">
+                            </div>
+                        </div>
+                    </div>
+
+                    <button id="btnConfirmImport" onclick="executeImport()" disabled class="w-full py-4 rounded-2xl bg-primary text-white font-black text-xs uppercase tracking-widest shadow-lg shadow-primary/30 hover:bg-blue-600 transition-all opacity-50 cursor-not-allowed active:scale-95">Procesar Carga Masiva</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Import Guide Modal -->
+    <div id="guideModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white dark:bg-gray-800 w-full max-w-2xl rounded-[2.5rem] shadow-2xl overflow-hidden animate-zoom-in">
+            <div class="p-8">
+                <div class="flex items-center justify-between mb-6">
+                    <h3 class="text-2xl font-black text-gray-900 dark:text-white">Guía de Importación</h3>
+                    <button onclick="document.getElementById('guideModal').classList.add('hidden')" class="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-400">
+                        <span class="material-symbols-outlined">close</span>
+                    </button>
+                </div>
+                
+                <div class="space-y-6 text-sm text-gray-600 dark:text-gray-400 overflow-y-auto max-h-[60vh] custom-scrollbar pr-4">
+                    <div class="p-5 bg-primary/5 border border-primary/20 rounded-2xl">
+                        <h4 class="font-black text-primary uppercase tracking-widest mb-2 text-xs">Formato de Archivo</h4>
+                        <p>Aceptamos archivos de tipo <strong>JSON</strong> y <strong>CSV</strong>. El sistema mapeará automáticamente las columnas basándose en el nombre de los campos.</p>
+                    </div>
+
+                    <div class="space-y-4">
+                        <h4 class="font-black text-gray-900 dark:text-white uppercase tracking-widest text-xs">Reglas Técnicas:</h4>
+                        <ul class="list-disc pl-5 space-y-2">
+                            <li><strong>Nombres de Columnas:</strong> Deben coincidir con los nombres de los campos de la tabla. No distinguen mayúsculas/minúsculas.</li>
+                            <li><strong>Relaciones:</strong> Puedes usar el <strong>ID</strong> numérico del registro relacionado o el valor del campo principal (ej: nombre de cliente).</li>
+                            <li><strong>Fechas:</strong> Use el formato estándar <code class="bg-gray-100 dark:bg-gray-900 px-1 rounded">YYYY-MM-DD</code>.</li>
+                            <li><strong>Booleanos:</strong> Use <code class="bg-gray-100 dark:bg-gray-900 px-1 rounded">true/false</code>, <code class="bg-gray-100 dark:bg-gray-900 px-1 rounded">1/0</code> o <code class="bg-gray-100 dark:bg-gray-900 px-1 rounded">Sí/No</code>.</li>
+                        </ul>
+                    </div>
+
+                    <div class="p-4 bg-emerald-500/5 border border-emerald-500/20 rounded-2xl">
+                        <p class="text-[10px] font-black text-emerald-600 uppercase mb-2 tracking-widest">Ejemplo CSV:</p>
+                        <pre class="text-[9px] font-mono leading-tight bg-white dark:bg-gray-900 p-3 rounded-xl border border-emerald-500/10">Nombre,Edad,Activo,Ciudad_Relacion\n"Juan Perez",30,Sí,1\n"Maria Lopez",25,No,2</pre>
+                    </div>
+                </div>
+
+                <div class="mt-8">
+                    <button onclick="document.getElementById('guideModal').classList.add('hidden')" class="w-full py-4 rounded-2xl bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 font-black text-xs uppercase tracking-widest">Entendido</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Style Customization Modal (Beta) -->
+    <div id="styleModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white dark:bg-[#101922] w-full max-w-lg rounded-[2.5rem] shadow-2xl overflow-hidden animate-zoom-in border border-gray-200 dark:border-gray-800">
+            <div class="p-8">
+                <div class="flex items-center justify-between mb-8">
+                    <div>
+                        <h3 class="text-2xl font-black text-gray-900 dark:text-white uppercase tracking-tighter italic">Personalizar Tabla</h3>
+                        <p class="text-[10px] text-primary font-black uppercase tracking-[0.2em] mt-1">Configuración de Estilo Visual (Beta)</p>
+                    </div>
+                    <button onclick="closeStyleModal()" class="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-400 hover:text-red-500 transition-all">
+                        <span class="material-symbols-outlined">close</span>
+                    </button>
+                </div>
+                
+                <div class="space-y-8">
+                    <!-- Accent Color -->
+                    <div>
+                        <label class="block text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 mb-4 ml-1">Color de Acento (Hover)</label>
+                        <div class="flex flex-wrap gap-3">
+                            <button onclick="updateTableStyle('accent', 'primary')" class="w-10 h-10 rounded-xl bg-primary ring-offset-2 ring-primary transition-all"></button>
+                            <button onclick="updateTableStyle('accent', 'emerald')" class="w-10 h-10 rounded-xl bg-emerald-500 hover:scale-110 transition-all"></button>
+                            <button onclick="updateTableStyle('accent', 'rose')" class="w-10 h-10 rounded-xl bg-rose-500 hover:scale-110 transition-all"></button>
+                            <button onclick="updateTableStyle('accent', 'amber')" class="w-10 h-10 rounded-xl bg-amber-500 hover:scale-110 transition-all"></button>
+                            <button onclick="updateTableStyle('accent', 'indigo')" class="w-10 h-10 rounded-xl bg-indigo-500 hover:scale-110 transition-all"></button>
+                            <button onclick="updateTableStyle('accent', 'slate')" class="w-10 h-10 rounded-xl bg-slate-500 hover:scale-110 transition-all"></button>
+                        </div>
+                    </div>
+
+                    <!-- Header Style -->
+                    <div>
+                        <label class="block text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 mb-4 ml-1">Estilo de Cabecera</label>
+                        <div class="grid grid-cols-2 gap-3">
+                            <button onclick="updateTableStyle('header', 'flat')" class="py-3 px-4 rounded-xl border-2 border-gray-100 dark:border-gray-800 text-[10px] font-black uppercase tracking-widest bg-gray-50/50 dark:bg-gray-900/50">Plano</button>
+                            <button onclick="updateTableStyle('header', 'grad')" class="py-3 px-4 rounded-xl border-2 border-transparent text-[10px] font-black uppercase tracking-widest bg-gradient-to-r from-primary/10 to-transparent">Degradado</button>
+                        </div>
+                    </div>
+
+                    <!-- Border Style -->
+                    <div>
+                        <label class="block text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 mb-4 ml-1">Bordes de Celda</label>
+                        <div class="grid grid-cols-3 gap-3">
+                            <button onclick="updateTableStyle('border', 'none')" class="py-3 px-2 rounded-xl border-2 border-gray-100 dark:border-gray-800 text-[8px] font-black uppercase tracking-widest">Ninguno</button>
+                            <button onclick="updateTableStyle('border', 'soft')" class="py-3 px-2 rounded-xl border-2 border-gray-100 dark:border-gray-800 text-[8px] font-black uppercase tracking-widest">Suave</button>
+                            <button onclick="updateTableStyle('border', 'full')" class="py-3 px-2 rounded-xl border-2 border-gray-100 dark:border-gray-800 text-[8px] font-black uppercase tracking-widest">Completo</button>
+                        </div>
+                    </div>
+
+                    <button onclick="saveTableStyles()" class="w-full py-5 bg-primary text-white rounded-3xl text-xs font-black uppercase tracking-[0.2em] shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all mt-4">Guardar Configuración Personal</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <style>
+    @keyframes zoom-in { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+    .animate-zoom-in { animation: zoom-in 0.3s ease-out forwards; }
+    .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+    .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 10px; }
+    .dark .custom-scrollbar::-webkit-scrollbar-thumb { background: #334155; }
+    
+    /* Dynamic Styles Placeholder */
+    #custom-table-styles {}
+    
+    .drag-handle { cursor: grab; opacity: 0.3; transition: opacity 0.2s; }
+    .drag-handle:hover { opacity: 1; }
+    .drag-handle:active { cursor: grabbing; }
+    .sortable-ghost { opacity: 0.3; background: rgba(19, 127, 236, 0.1); }
+    </style>
+</body>
+
+</html>

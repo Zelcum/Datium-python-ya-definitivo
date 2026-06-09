@@ -1,0 +1,99 @@
+.loading-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+}
+
+.loading-overlay.active {
+    opacity: 1;
+    pointer-events: all;
+}
+
+.loading-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.5rem;
+    padding: 2.5rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-2xl);
+    box-shadow: var(--shadow-xl);
+    min-width: 280px;
+    animation: scale-in 0.25s ease-out;
+}
+
+.loading-logo {
+    width: 3.5rem;
+    height: 3.5rem;
+    object-fit: contain;
+    border-radius: var(--radius-lg);
+}
+
+#loading-spinner-container {
+    position: relative;
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.loading-spinner {
+    width: 40px;
+    height: 40px;
+    border: 3px solid var(--border);
+    border-top-color: var(--primary);
+    border-radius: 50%;
+    animation: spin-slow 0.8s linear infinite;
+}
+
+.checkmark, .cross {
+    position: absolute;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    opacity: 0;
+    transform: scale(0.5);
+    transition: all 0.3s ease;
+}
+
+.checkmark.show {
+    opacity: 1;
+    transform: scale(1);
+    color: var(--success);
+}
+
+.cross.show {
+    opacity: 1;
+    transform: scale(1);
+    color: var(--danger);
+}
+
+.loading-text {
+    font-size: 0.8125rem;
+    font-weight: 700;
+    color: var(--text-secondary);
+    letter-spacing: 0.025em;
+    text-align: center;
+}
+
+.loading-text.success {
+    color: var(--success);
+}
+
+.loading-text.error {
+    color: var(--danger);
+}
