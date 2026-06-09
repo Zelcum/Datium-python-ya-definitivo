@@ -185,9 +185,17 @@ def _chat_ollama(model: str, messages: List[Dict[str, str]], stream_callback=Non
             "repeat_penalty": 1.1,
         },
     }
+    # Headers necesarios para que ngrok/localtunnel no bloqueen la petición con 403
+    headers = {
+        "Content-Type": "application/json",
+        "ngrok-skip-browser-warning": "true",
+        "bypass-tunnel-reminder": "true",
+        "User-Agent": "DatiumAI/1.0",
+    }
     response = requests.post(
         f"{DATIUM_OLLAMA_URL}/api/chat",
         json=payload,
+        headers=headers,
         timeout=180,
         stream=True,
     )
@@ -219,7 +227,12 @@ def _ollama_available_models() -> List[str]:
     if now - _model_cache["ts"] < 30 and _model_cache["models"]:
         return _model_cache["models"]
     try:
-        r = requests.get(f"{DATIUM_OLLAMA_URL}/api/tags", timeout=8)
+        headers = {
+            "ngrok-skip-browser-warning": "true",
+            "bypass-tunnel-reminder": "true",
+            "User-Agent": "DatiumAI/1.0",
+        }
+        r = requests.get(f"{DATIUM_OLLAMA_URL}/api/tags", headers=headers, timeout=8)
         if r.status_code != 200:
             return _model_cache["models"]
         payload = r.json()
