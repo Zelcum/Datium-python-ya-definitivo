@@ -216,10 +216,10 @@ _model_cache: Dict[str, Any] = {"ts": 0.0, "models": []}
 def _ollama_available_models() -> List[str]:
     import time
     now = time.time()
-    if now - _model_cache["ts"] < 60 and _model_cache["models"]:
+    if now - _model_cache["ts"] < 30 and _model_cache["models"]:
         return _model_cache["models"]
     try:
-        r = requests.get(f"{DATIUM_OLLAMA_URL}/api/tags", timeout=6)
+        r = requests.get(f"{DATIUM_OLLAMA_URL}/api/tags", timeout=8)
         if r.status_code != 200:
             return _model_cache["models"]
         payload = r.json()
@@ -231,38 +231,67 @@ def _ollama_available_models() -> List[str]:
         return _model_cache["models"]
 
 
+def _resolve_model(preferred: str) -> str:
+    """
+    Dada una preferencia de modelo (ej: 'llama3'), busca el mejor
+    nombre real instalado en Ollama. Evita llamadas fallidas con 404.
+    Estrategia:
+      1. Si preferred coincide exactamente con un modelo instalado -> usarlo.
+      2. Si algún modelo instalado empieza con preferred -> usarlo.
+      3. Si preferred contiene ':' y el modelo base coincide -> usarlo.
+      4. Usar el primer modelo instalado disponible.
+    """
+    installed = _ollama_available_models()
+    if not installed:
+        # Sin lista disponible, intentar con el nombre tal cual
+        return preferred or DATIUM_PRIMARY_MODEL
+
+    pref_lower = (preferred or "").lower().strip()
+
+    # 1. Coincidencia exacta
+    for m in installed:
+        if m.lower() == pref_lower:
+            return m
+
+    # 2. El modelo instalado empieza con el nombre preferido (ej: "llama3" -> "llama3:latest")
+    for m in installed:
+        base = m.split(":")[0].lower()
+        if base == pref_lower or m.lower().startswith(pref_lower):
+            return m
+
+    # 3. Si preferred tiene tag, comparar solo la base
+    pref_base = pref_lower.split(":")[0]
+    for m in installed:
+        if m.lower().startswith(pref_base):
+            return m
+
+    # 4. Fallback: primer modelo disponible
+    return installed[0]
+
+
 def ollama_chat(model: str, messages: List[Dict[str, str]], fallback_model: Optional[str] = None, stream_callback=None) -> str:
-    # Normalizar: quitar prefijos como "local:" si los hubiera
+    # Limpiar prefijos innecesarios
     def _clean(m: str) -> str:
-        return m.split(":", 1)[1] if m.startswith("local:") else (m or "").strip()
+        m = (m or "").strip()
+        return m.split(":", 1)[1] if m.startswith("local:") else m
 
-    primary = _clean(model or DATIUM_PRIMARY_MODEL)
-    fallback = _clean(fallback_model or DATIUM_FALLBACK_MODEL)
+    preferred = _clean(model) or _clean(DATIUM_PRIMARY_MODEL)
 
-    # Construir lista de candidatos sin duplicados, priorizando el modelo principal
-    seen: set = set()
-    candidates: List[str] = []
-    for m in [primary, fallback, DATIUM_PRIMARY_MODEL, DATIUM_FALLBACK_MODEL]:
-        name = _clean(m)
-        if name and name not in seen:
-            seen.add(name)
-            candidates.append(name)
+    # Resolver el modelo real instalado en Ollama de una sola vez
+    resolved = _resolve_model(preferred)
 
-    # Añadir cualquier modelo instalado localmente como último recurso
-    for m in _ollama_available_models():
-        name = _clean(m)
-        if name and name not in seen:
-            seen.add(name)
-            candidates.append(name)
-
-    errors: List[str] = []
-    for m in candidates:
-        try:
-            return _chat_ollama(m, messages, stream_callback=stream_callback)
-        except Exception as exc:
-            errors.append(f"{m}: {exc}")
-
-    raise RuntimeError("No hay modelo de Ollama disponible. " + " | ".join(errors[:4]))
+    try:
+        return _chat_ollama(resolved, messages, stream_callback=stream_callback)
+    except Exception as exc:
+        # Último intento: primer modelo disponible (diferente al ya probado)
+        installed = _ollama_available_models()
+        for fallback in installed:
+            if fallback != resolved:
+                try:
+                    return _chat_ollama(fallback, messages, stream_callback=stream_callback)
+                except Exception:
+                    continue
+        raise RuntimeError(f"Ningún modelo de Ollama disponible. Último error: {exc}")
 
 
 def _normalize_actions(parsed: Dict[str, Any]) -> List[Dict[str, Any]]:
