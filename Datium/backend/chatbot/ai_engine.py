@@ -11,14 +11,14 @@ from api.models import System, SystemField, SystemRecord, SystemRecordValue, Sys
 
 
 DATIUM_OLLAMA_URL = os.getenv("DATIUM_OLLAMA_URL", os.getenv("OLLAMA_BASE_URL", "http://127.0.0.1:11434")).rstrip("/")
-DATIUM_PRIMARY_MODEL = os.getenv("DATIUM_AI_MODEL", "qwen3.5:cloud")
-DATIUM_FALLBACK_MODEL = os.getenv("DATIUM_AI_FALLBACK", "qwen3.5:cloud")
+DATIUM_PRIMARY_MODEL = os.getenv("DATIUM_AI_MODEL", "llama3")
+DATIUM_FALLBACK_MODEL = os.getenv("DATIUM_AI_FALLBACK", "llama3")
 
 
 @dataclass(frozen=True)
 class AiConfig:
-    model: str = "qwen3.5:cloud"
-    fallback_model: str = "qwen3.5:cloud"
+    model: str = "llama3"
+    fallback_model: str = "llama3"
     enabled: bool = True
     chatbot_id: str = "datium-default"
 
@@ -129,63 +129,36 @@ def build_system_prompt(*, user: User, system_id: Optional[int], user_message: s
     schema = build_schema_context(user, system_id)
     real_data = build_real_data_context(user, user_message, system_id)
     user_name = (user.name or user.email or "Usuario").strip()
-    user_email = user.email
-    user_role = user.role
-    user_phone = user.phone or "No registrado"
-    user_expertise = user.expertise_level
     user_plan = user.plan.name if user.plan else "Sin plan"
+    user_expertise = user.expertise_level
+    user_role = user.role
 
     focus_rule = ""
     if system_id:
-        focus_rule = "- ESTRICTAMENTE PROHIBIDO usar 'create_system' o 'delete_system'. Como ya hay un sistema seleccionado (FOCO_SISTEMA_ID), todas las tablas que pida el usuario DEBES obligatoriamente crearlas dentro de este sistema usando 'create_table', NUNCA crees sistemas nuevos."
+        focus_rule = f"El sistema activo es ID {system_id}. NUNCA uses create_system. Toda nueva tabla va dentro de este sistema con create_table."
 
     return (
-        "Eres la IA administrativa integrada de Datium.\n"
-        "Hablas natural, ejecutiva, formal, clara y precisa. Jamas suenas robotica ni repites plantillas.\n"
-        "REGLA CRITICA DE FORMATO: AHORA SOPORTAS MARKDOWN OFICIAL Y NATIVO. Puedes y debes usar negritas (**texto**), listas enumeradas y crear tablas (usando |) para estructurar datos visualmente para el usuario.\n"
-        "Tienes el mismo contexto operativo del usuario logueado dentro del sistema.\n"
-        "\n"
-        "INFORMACION DEL USUARIO LOGUEADO:\n"
-        f"- Nombre: {user_name}\n"
-        f"- Email: {user_email}\n"
-        f"- Rol: {user_role}\n"
-        f"- Telefono: {user_phone}\n"
-        f"- Nivel de Experiencia: {user_expertise}\n"
-        f"- Plan Actual: {user_plan}\n"
-        "\n"
-        "REGLAS:\n"
-        "- Responde como una persona formal, y cuando toque operar el sistema se altamente precisa y ejecutiva.\n"
-        "- Usa parrafos breves y directos. Evita listas decorativas innecesarias.\n"
-        "- No inventes datos. Si no hay filas, responde literalmente: \"La tabla esta vacia.\".\n"
-        "- Siempre respeta el FOCO (sistema activo). Si existe un sistema enfocado, toda consulta o accion debe resolverse ahi.\n"
+        f"Eres la IA administrativa de Datium. Formal, precisa y directa.\n"
+        f"Usuario: {user_name} | Rol: {user_role} | Plan: {user_plan} | Nivel: {user_expertise}\n"
+        f"FOCO_SISTEMA: {system_id if system_id else 'GLOBAL'}\n"
         f"{focus_rule}\n"
-        "- Nunca reutilices plantillas fijas antiguas como asistencia escolar, CRM u otras, a menos que se pida explicitamente.\n"
-        "- Si el usuario quiere crear una estructura, disena exactamente lo que pidio con los campos minimos necesarios.\n"
-        "- Si propones crear, editar, mover o eliminar elementos, incluye ademas un bloque JSON al final para confirmacion.\n"
-        "- Si la accion elimina algo, advierte de forma breve que pedira contrasena antes de ejecutar.\n"
-        "- Si la accion es sensible, menciona que quedara registrada en auditoria.\n"
-        "- El texto visible para el usuario debe poder leerse por si solo, sin mencionar reglas internas.\n"
-        "- Nunca mezcles caracteres raros, simbolos corruptos o texto con encoding roto. Solo espanol formal.\n"
-        f"- Trataras al usuario cordialmente como: {user_name}, y tendras en cuenta su nivel ({user_expertise}) y rol ({user_role}).\n"
         "\n"
-        "CUANDO PROPONGAS CAMBIOS:\n"
-        "- Explica breve que vas a crear o modificar devolviendo siempre el contexto JSON.\n"
-        "- Muestra la estructura propuesta en lenguaje humano.\n"
-        "- Luego incluye un bloque JSON válido con este formato EXACTO:\n"
+        "REGLAS ESTRICTAS:\n"
+        "- Responde en español formal y directo. Sin relleno.\n"
+        "- Usa Markdown: negritas, listas, tablas cuando aplique.\n"
+        "- NO inventes datos. Si una tabla está vacía, dilo explícitamente.\n"
+        "- Si propones crear, editar o eliminar algo, incluye al final un bloque JSON válido:\n"
         "```json\n"
         "{\"confirmation_required\": true, \"summary\": \"...\", \"actions\": [{\"action\":\"...\",\"payload\":{...}}]}\n"
         "```\n"
-        "- MANTEN TU RESPUESTA DE TEXTO FUERA DEL BLOQUE JSON. El bloque JSON debe ir obligatoriamente al final de tu mensaje.\n"
-        "- NUNCA incluyas texto normal ni saludos dentro del JSON. El JSON debe ser estrictamente válido.\n"
-        "- Acciones validas: create_system, update_system, delete_system, list_tables, create_table, update_table, delete_table, list_records, create_record, update_record, delete_record.\n"
-        "- Estructura correcta create_system: {action:'create_system', payload:{name, description, imageUrl?, securityMode?, tables:[{name, description?, fields:[...]}]}}.\n"
-        "- Tipos validos campo: text, number, date, boolean, select, relation.\n"
+        "- Acciones válidas: create_system, update_system, delete_system, list_tables, create_table, update_table, delete_table, list_records, create_record, update_record, delete_record.\n"
+        "- Tipos de campo válidos: text, number, date, boolean, select, relation.\n"
+        "- El JSON va AL FINAL, nunca en medio del texto.\n"
         "\n"
-        f"FOCO_SISTEMA_ID: {system_id if system_id else 'GLOBAL'}\n"
-        f"\n{schema}\n"
-        f"\n{real_data}\n"
-        f"\nCONTEXTO_ARCHIVOS:\n{file_context.strip()}\n"
-        f"\nMENSAJE_ACTUAL_DEL_USUARIO:\n{user_message.strip()}\n"
+        f"{schema}\n"
+        f"{real_data}\n"
+        f"{'CONTEXTO_ARCHIVOS:\\n' + file_context.strip() if file_context.strip() else ''}\n"
+        f"MENSAJE: {user_message.strip()}\n"
     ).strip()
 
 
@@ -198,33 +171,42 @@ def _clean_ai_text(text: str) -> str:
 
 
 def _chat_ollama(model: str, messages: List[Dict[str, str]], stream_callback=None) -> str:
-    target_model = model.split(":", 1)[1] if ":" in model else model
+    # Usar el nombre del modelo directo, sin prefijos
+    target_model = model.split(":", 1)[1] if model.startswith("local:") else model
     payload = {
         "model": target_model,
         "messages": messages,
-        "stream": bool(stream_callback),
-        "options": {"temperature": 0.35, "num_predict": 1024, "num_ctx": 4096},
+        "stream": True,  # Siempre streaming para tiempo real
+        "options": {
+            "temperature": 0.3,
+            "num_predict": 1536,
+            "num_ctx": 4096,
+            "top_p": 0.9,
+            "repeat_penalty": 1.1,
+        },
     }
-    response = requests.post(f"{DATIUM_OLLAMA_URL}/api/chat", json=payload, timeout=180, stream=bool(stream_callback))
+    response = requests.post(
+        f"{DATIUM_OLLAMA_URL}/api/chat",
+        json=payload,
+        timeout=180,
+        stream=True,
+    )
     if response.status_code != 200:
         raise RuntimeError(f"Ollama error {response.status_code}: {response.text[:200]}")
-    
-    if stream_callback:
-        full_text = []
-        for line in response.iter_lines():
-            if line:
-                try:
-                    data = json.loads(line)
-                    content = (data.get("message") or {}).get("content", "")
-                    if content:
+
+    full_text = []
+    for line in response.iter_lines():
+        if line:
+            try:
+                data = json.loads(line)
+                content = (data.get("message") or {}).get("content", "")
+                if content:
+                    if stream_callback:
                         stream_callback(content)
-                        full_text.append(content)
-                except Exception:
-                    pass
-        return "".join(full_text)
-    else:
-        data = response.json()
-        return (data.get("message") or {}).get("content", "")
+                    full_text.append(content)
+            except Exception:
+                pass
+    return "".join(full_text)
 
 
 
@@ -250,34 +232,33 @@ def _ollama_available_models() -> List[str]:
 
 
 def ollama_chat(model: str, messages: List[Dict[str, str]], fallback_model: Optional[str] = None, stream_callback=None) -> str:
-    requested = model.split(":", 1)[1] if ":" in model else model
-    configured_fallback = fallback_model.split(":", 1)[1] if fallback_model and ":" in fallback_model else (fallback_model or "")
+    # Normalizar: quitar prefijos como "local:" si los hubiera
+    def _clean(m: str) -> str:
+        return m.split(":", 1)[1] if m.startswith("local:") else (m or "").strip()
 
-    candidates = [requested]
-    if configured_fallback and configured_fallback != requested:
-        candidates.append(configured_fallback)
-    if DATIUM_PRIMARY_MODEL not in candidates:
-        candidates.append(DATIUM_PRIMARY_MODEL)
-    if DATIUM_FALLBACK_MODEL not in candidates:
-        candidates.append(DATIUM_FALLBACK_MODEL)
+    primary = _clean(model or DATIUM_PRIMARY_MODEL)
+    fallback = _clean(fallback_model or DATIUM_FALLBACK_MODEL)
 
-    installed = _ollama_available_models()
-    for m in installed:
-        if m not in candidates:
-            candidates.append(m)
-
-    seen = set()
-    deduped = []
-    for c in candidates:
-        name = str(c or "").strip()
+    # Construir lista de candidatos sin duplicados, priorizando el modelo principal
+    seen: set = set()
+    candidates: List[str] = []
+    for m in [primary, fallback, DATIUM_PRIMARY_MODEL, DATIUM_FALLBACK_MODEL]:
+        name = _clean(m)
         if name and name not in seen:
             seen.add(name)
-            deduped.append(name)
+            candidates.append(name)
 
-    errors = []
-    for m in deduped:
+    # Añadir cualquier modelo instalado localmente como último recurso
+    for m in _ollama_available_models():
+        name = _clean(m)
+        if name and name not in seen:
+            seen.add(name)
+            candidates.append(name)
+
+    errors: List[str] = []
+    for m in candidates:
         try:
-            return _chat_ollama(f"local:{m}", messages, stream_callback=stream_callback)
+            return _chat_ollama(m, messages, stream_callback=stream_callback)
         except Exception as exc:
             errors.append(f"{m}: {exc}")
 
