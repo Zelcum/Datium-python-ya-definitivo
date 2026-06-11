@@ -1,4 +1,12 @@
 from __future__ import annotations
+from openai import OpenAI
+import os
+
+client = OpenAI(
+    api_key=os.getenv("GROQ_API_KEY"),
+    base_url="https://api.groq.com/openai/v1"
+)
+
 
 import json
 import os
@@ -217,6 +225,31 @@ def _chat_ollama(model: str, messages: List[Dict[str, str]], stream_callback=Non
     return "".join(full_text)
 
 
+def _chat_groq(model: str, messages, stream_callback=None) -> str:
+    stream = client.chat.completions.create(
+        model=model,
+        messages=messages,
+        temperature=0.3,
+        max_tokens=1500,
+        stream=True
+    )
+
+    full_text = []
+
+    for chunk in stream:
+        if not chunk.choices:
+            continue
+
+        delta = chunk.choices[0].delta.content
+
+        if delta:
+            full_text.append(delta)
+
+            if stream_callback:
+                stream_callback(delta)
+
+    return "".join(full_text)
+
 
 _model_cache: Dict[str, Any] = {"ts": 0.0, "models": []}
 
@@ -282,30 +315,23 @@ def _resolve_model(preferred: str) -> str:
     return installed[0]
 
 
-def ollama_chat(model: str, messages: List[Dict[str, str]], fallback_model: Optional[str] = None, stream_callback=None) -> str:
-    # Limpiar prefijos innecesarios
-    def _clean(m: str) -> str:
-        m = (m or "").strip()
-        return m.split(":", 1)[1] if m.startswith("local:") else m
+def ollama_chat(
+    model: str,
+    messages: List[Dict[str, str]],
+    fallback_model: Optional[str] = None,
+    stream_callback=None
+) -> str:
 
-    preferred = _clean(model) or _clean(DATIUM_PRIMARY_MODEL)
+    model_name = model or os.getenv(
+        "DATIUM_AI_MODEL",
+        "llama-3.3-70b-versatile"
+    )
 
-    # Resolver el modelo real instalado en Ollama de una sola vez
-    resolved = _resolve_model(preferred)
-
-    try:
-        return _chat_ollama(resolved, messages, stream_callback=stream_callback)
-    except Exception as exc:
-        # Último intento: primer modelo disponible (diferente al ya probado)
-        installed = _ollama_available_models()
-        for fallback in installed:
-            if fallback != resolved:
-                try:
-                    return _chat_ollama(fallback, messages, stream_callback=stream_callback)
-                except Exception:
-                    continue
-        raise RuntimeError(f"Ningún modelo de Ollama disponible. Último error: {exc}")
-
+    return _chat_groq(
+        model_name,
+        messages,
+        stream_callback=stream_callback
+    )
 
 def _normalize_actions(parsed: Dict[str, Any]) -> List[Dict[str, Any]]:
     actions = parsed.get("actions", [])
