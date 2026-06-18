@@ -193,14 +193,17 @@ function addNewFieldRow(fieldData = null) {
              <div class="field-options-container flex-1 hidden">
                 <input type="text" class="new-field-options w-full px-3 py-2 rounded-lg border-gray-200 dark:border-gray-700 bg-white dark:bg-black/20 text-sm dark:text-white" placeholder="Opciones: A, B, C">
             </div>
-            <div class="field-relation-container flex-1 hidden gap-2">
-                 <select class="new-field-rel-table w-1/2 px-2 py-2 rounded-lg border-gray-200 dark:border-gray-700 bg-white dark:bg-black/20 text-xs dark:text-white">
-                    <option value="">Tabla Destino...</option>
-                    ${systemTables.map(t => `<option value="${t.id}">${t.name}</option>`).join('')}
-                </select>
-                 <select class="new-field-rel-display w-1/2 px-2 py-2 rounded-lg border-gray-200 dark:border-gray-700 bg-white dark:bg-black/20 text-xs dark:text-white" disabled>
-                    <option value="">Campo Display...</option>
-                </select>
+            <div class="field-relation-container flex-1 hidden flex-col gap-1">
+                <div class="flex gap-2 w-full">
+                    <select class="new-field-rel-table w-1/2 px-2 py-2 rounded-lg border-gray-200 dark:border-gray-700 bg-white dark:bg-black/20 text-xs dark:text-white">
+                        <option value="">Tabla Destino...</option>
+                        ${systemTables.map(t => `<option value="${t.id}">${t.name}</option>`).join('')}
+                    </select>
+                    <select class="new-field-rel-display w-1/2 px-2 py-2 rounded-lg border-gray-200 dark:border-gray-700 bg-white dark:bg-black/20 text-xs dark:text-white" disabled>
+                        <option value="">Campo Display...</option>
+                    </select>
+                </div>
+                <div class="field-rel-pk-info text-[10px] text-primary italic font-bold px-1 hidden"></div>
             </div>
         </div>
 
@@ -212,6 +215,10 @@ function addNewFieldRow(fieldData = null) {
             <label class="flex items-center cursor-pointer" title="Valor Único">
                 <input type="checkbox" class="new-field-unique form-checkbox rounded text-blue-500 border-gray-300 dark:border-gray-600 bg-transparent focus:ring-0 w-4 h-4">
                 <span class="ml-2 text-xs text-gray-500 font-medium">Uniq</span>
+            </label>
+            <label class="flex items-center cursor-pointer" title="Llave Primaria">
+                <input type="checkbox" class="new-field-pk form-checkbox rounded text-amber-500 border-gray-300 dark:border-gray-600 bg-transparent focus:ring-0 w-4 h-4" onchange="togglePK(this)">
+                <span class="ml-2 text-xs text-gray-500 font-medium">PK</span>
             </label>
             <button type="button" onclick="const row = this.closest('.bg-gray-50'); row.style.opacity = '0'; setTimeout(() => row.remove(), 300);" class="p-2 text-gray-400 hover:text-red-500 transition-colors" title="Eliminar campo">
                 <span class="material-symbols-outlined text-lg">delete</span>
@@ -248,12 +255,26 @@ function addNewFieldRow(fieldData = null) {
         if (!tId) return;
         relDisplaySelect.innerHTML = '<option value="">Cargando...</option>';
         relDisplaySelect.disabled = true;
+        
+        const pkInfo = div.querySelector('.field-rel-pk-info');
+        pkInfo.classList.add('hidden');
 
         const res = await apiFetch(`/tables/${tId}/fields`);
         if (res.ok) {
             const fields = await res.json();
-            relDisplaySelect.innerHTML = fields.map(f => `<option value="${f.id}">${f.name}</option>`).join('');
+            relDisplaySelect.innerHTML = '<option value="">Campo Display (Opcional)...</option>' + fields.map(f => `<option value="${f.id}">${f.name}</option>`).join('');
             relDisplaySelect.disabled = false;
+
+            const targetPk = fields.find(f => f.isPrimaryKey);
+            if (targetPk) {
+                pkInfo.innerText = `Ligar a PK: ${targetPk.name}`;
+                pkInfo.classList.remove('hidden');
+                pkInfo.classList.replace('text-red-500', 'text-primary');
+            } else {
+                pkInfo.innerText = `⚠️ La tabla destino no tiene PK.`;
+                pkInfo.classList.remove('hidden');
+                pkInfo.classList.replace('text-primary', 'text-red-500');
+            }
 
             if (selectedFieldId) {
                 relDisplaySelect.value = selectedFieldId;
@@ -296,6 +317,28 @@ function addNewFieldRow(fieldData = null) {
         idInput.className = 'new-field-id';
         idInput.value = fieldData.id;
         div.appendChild(idInput);
+
+        if (fieldData.isPrimaryKey) {
+            div.querySelector('.new-field-pk').checked = true;
+            div.querySelector('.new-field-unique').checked = true;
+            div.querySelector('.new-field-required').checked = true;
+        }
+        if (fieldData.is_unique) {
+            div.querySelector('.new-field-unique').checked = true;
+        }
+    }
+}
+
+function togglePK(checkbox) {
+    if (checkbox.checked) {
+        // Uncheck other PK checkboxes
+        document.querySelectorAll('.new-field-pk').forEach(cb => {
+            if (cb !== checkbox) cb.checked = false;
+        });
+        // PK must be unique and required
+        const row = checkbox.closest('.bg-gray-50');
+        row.querySelector('.new-field-unique').checked = true;
+        row.querySelector('.new-field-required').checked = true;
     }
 }
 
@@ -337,6 +380,7 @@ async function saveTable() {
             type: type,
             required: row.querySelector('.new-field-required').checked,
             unique: row.querySelector('.new-field-unique').checked || false,
+            isPrimaryKey: row.querySelector('.new-field-pk').checked || false,
             orderIndex: Array.from(fieldRows).indexOf(row),
             options: options,
             relatedTableId: relatedTableId,

@@ -236,7 +236,7 @@ async function renderDiagram() {
                     if (f.type === 'string') typeLabel = 'string';
                     if (f.type === 'number') typeLabel = 'number';
                     
-                    let keyMarker = f.name.toLowerCase() === 'id' ? 'PK' : (f.relatedTableId ? 'FK' : '');
+                    let keyMarker = f.isPrimaryKey ? 'PK' : (f.relatedTableId ? 'FK' : '');
                     definition += `        ${typeLabel} ${safeFName} ${keyMarker}\n`;
                     
                     if (f.relatedTableId) {
@@ -372,7 +372,7 @@ async function renderDataDictionary() {
                                 <th class="pb-6 px-4 text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Identificador</th>
                                 <th class="pb-6 px-4 text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Data Type</th>
                                 <th class="pb-6 px-4 text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Constraints</th>
-                                <th class="pb-6 px-4 text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">References</th>
+                                <th class="pb-6 px-4 text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Foreign Key / References</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-50/50 dark:divide-gray-800/20">
@@ -408,10 +408,10 @@ async function renderDataDictionary() {
                     </td>
                     <td class="py-6 px-4">
                         <div class="flex flex-wrap gap-2">
-                            ${isPK ? '<span class="bg-amber-400/10 text-amber-500 border border-amber-400/20 px-2 py-0.5 rounded text-[8px] font-black tracking-tighter">PRIMARY KEY</span>' : ''}
+                            ${f.isPrimaryKey ? '<span class="bg-amber-400/10 text-amber-500 border border-amber-400/20 px-2 py-0.5 rounded text-[8px] font-black tracking-tighter">PRIMARY KEY</span>' : ''}
                             ${f.required ? '<span class="bg-red-400/10 text-red-500 border border-red-400/20 px-2 py-0.5 rounded text-[8px] font-black tracking-tighter">NOT NULL</span>' : ''}
                             ${f.is_unique ? '<span class="bg-blue-400/10 text-blue-500 border border-blue-400/20 px-2 py-0.5 rounded text-[8px] font-black tracking-tighter">UNIQUE</span>' : ''}
-                            ${(!isPK && !f.required && !f.is_unique) ? '<span class="text-gray-300 dark:text-gray-700 font-black text-[8px] uppercase tracking-widest">NULLABLE</span>' : ''}
+                            ${(!f.isPrimaryKey && !f.required && !f.is_unique) ? '<span class="text-gray-300 dark:text-gray-700 font-black text-[8px] uppercase tracking-widest">NULLABLE</span>' : ''}
                         </div>
                     </td>
                     <td class="py-6 px-4">

@@ -161,9 +161,9 @@ function renderTableBody(records) {
             </td>
             <td class="px-6 py-4 font-medium text-gray-900 dark:text-white">#${r.id}</td>
             ${currentFields.map(f => {
-                let val = r.fieldValues[f.name];
+                let val = r.displayValues ? r.displayValues[f.name] : r.fieldValues[f.name];
                 
-                if (f.relatedTableId && relationCache[f.id]) {
+                if (!r.displayValues && f.relatedTableId && relationCache[f.id]) {
                     val = relationCache[f.id][val] || val || '';
                 }
 

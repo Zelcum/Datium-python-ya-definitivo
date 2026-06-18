@@ -1,6 +1,6 @@
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
-from rest_framework import status
+from rest_framework import status, exceptions
 from django.shortcuts import get_object_or_404
 from django.db import transaction, IntegrityError
 from django.db.models import Q
@@ -223,7 +223,8 @@ def serialize_table(t, user=None):
 def serialize_field(f):
     r = {
         'id': f.id, 'name': f.name, 'type': f.type,
-        'required': f.required, 'orderIndex': f.order_index,
+        'required': f.required, 'is_unique': f.is_unique,
+        'isPrimaryKey': f.is_primary_key, 'orderIndex': f.order_index,
     }
     if f.type == 'select':
         r['options'] = list(SystemFieldOption.objects.filter(field=f).values_list('value', flat=True))
@@ -244,9 +245,70 @@ def serialize_field(f):
 def serialize_record(record, fields):
     vals = {v.field_id: v.value for v in SystemRecordValue.objects.filter(record=record)}
     fv = {}
+    display_vals = {}
     for f in fields:
-        fv[f.name] = vals.get(f.id, '')
-    return {'id': record.id, 'fieldValues': fv}
+        val = vals.get(f.id, '')
+        fv[f.name] = val
+        
+        # Resolve relations for display
+        if f.type == 'relation' and val:
+            try:
+                rel_id = int(val)
+                rel_rec = SystemRecord.objects.get(id=rel_id)
+                disp_field = f.related_display_field
+                if not disp_field and f.related_table_id:
+                    # Fallback to PK of related table
+                    disp_field = SystemField.objects.filter(table_id=f.related_table_id, is_primary_key=True).first()
+                
+                if disp_field:
+                    # Get the value of the display field in the related record
+                    d_val = SystemRecordValue.objects.filter(record=rel_rec, field=disp_field).first()
+                    display_vals[f.name] = d_val.value if d_val else f"#{rel_id}"
+                else:
+                    # Total fallback to first field's value if no PK or display field
+                    first_val = SystemRecordValue.objects.filter(record=rel_rec).exclude(field__type='file').first()
+                    display_vals[f.name] = first_val.value if first_val else f"#{rel_id}"
+            except Exception:
+                display_vals[f.name] = val
+        else:
+            display_vals[f.name] = val
+            
+    return {'id': record.id, 'fieldValues': fv, 'displayValues': display_vals}
+ 
+ 
+def _validate_record_values(table, fields, values, record_id=None):
+    """
+    Validates values for a record in a table.
+    - Required fields
+    - Uniqueness (is_unique or is_primary_key)
+    - Relation existence
+    """
+    for f in fields:
+        val = values.get(str(f.id))
+        if val is None:
+            val = values.get(f.name)
+        
+        # Required check
+        if f.required and (val is None or str(val).strip() == ""):
+            return f'El campo "{f.name}" es obligatorio.'
+        
+        if val is not None and str(val).strip() != "":
+            # Uniqueness check
+            if f.is_unique or f.is_primary_key:
+                # Find other records with the same value for this field
+                others = SystemRecordValue.objects.filter(field=f, value=val).exclude(record_id=record_id)
+                if others.exists():
+                    return f'El valor "{val}" ya existe en el campo único "{f.name}".'
+            
+            # Relation check
+            if f.type == 'relation' and f.related_table_id:
+                try:
+                    rel_id = int(val)
+                    if not SystemRecord.objects.filter(id=rel_id, table_id=f.related_table_id).exists():
+                        return f'El registro relacionado con ID {rel_id} no existe en la tabla "{f.related_table.name}".'
+                except (ValueError, TypeError):
+                    return f'El valor del campo "{f.name}" debe ser un ID numérico válido.'
+    return None
 
 
 def log_action(user, system, action, details='', ip=''):
@@ -809,6 +871,11 @@ def _save_fields(table, fields_data, update=False):
         existing_ids = {fd.get('id') for fd in fields_data if fd.get('id')}
         SystemField.objects.filter(table=table).exclude(id__in=existing_ids).delete()
 
+    # Integrity Check: Only one PK per table
+    pk_count = sum(1 for fd in fields_data if fd.get('isPrimaryKey'))
+    if pk_count > 1:
+        raise exceptions.ValidationError("Una tabla solo puede tener una llave primaria.")
+
     for i, fd in enumerate(fields_data):
         fid = fd.get('id')
         name = fd.get('name', '')
@@ -817,9 +884,25 @@ def _save_fields(table, fields_data, update=False):
         options = fd.get('options', [])
         related_table_id = fd.get('relatedTableId')
         related_display_field_id = fd.get('relatedDisplayFieldId')
+        is_pk = fd.get('isPrimaryKey', False)
+
+        # Integrity Check: Relation targets must have a PK
+        if ftype == 'relation' and related_table_id:
+            # Check if target table has a PK
+            target_pk = SystemField.objects.filter(table_id=related_table_id, is_primary_key=True).first()
+            # If creating a new table and relating to it (edge case) or if it's an existing table
+            if not target_pk:
+                # We also need to check if the PK is being defined in the same transaction for the SAME table 
+                # (but relation typically points to DIFFERENT tables).
+                # If target is DIFFERENT table, we check its current state.
+                if int(related_table_id) != table.id:
+                    raise exceptions.ValidationError(f"La tabla de destino de la relación '{name}' debe tener una Llave Primaria (PK) definida.")
 
         defaults = dict(
-            name=name, type=ftype, required=required, order_index=i,
+            name=name, type=ftype, required=required, 
+            is_unique=fd.get('unique', False) or is_pk,
+            is_primary_key=is_pk,
+            order_index=i,
             related_table_id=related_table_id,
             related_display_field_id=related_display_field_id,
         )
@@ -1028,17 +1111,20 @@ def table_records_view(request, pk):
         ok, res = check_table_permission(user, table, 'create')
         if not ok: return res
         values = request.data.get('values', {})
-        fields_by_id = {f.id: f for f in fields}
-        for f in fields:
-            if f.required and str(f.id) not in values and f.name not in values:
-                return Response({'error': f'El campo "{f.name}" es obligatorio'}, status=400)
+        
+        err_msg = _validate_record_values(table, fields, values)
+        if err_msg:
+            return Response({'error': err_msg}, status=400)
+            
         record = SystemRecord.objects.create(table=table, created_by=user)
-        for field_id_str, value in values.items():
-            try:
-                field_id = int(field_id_str)
-                SystemRecordValue.objects.create(record=record, field_id=field_id, value=value or '')
-            except (ValueError, Exception):
-                pass
+        for field in fields:
+            val = values.get(str(field.id))
+            if val is None:
+                val = values.get(field.name)
+            
+            if val is not None:
+                SystemRecordValue.objects.create(record=record, field=field, value=str(val))
+                
         log_action(user, table.system, 'CREAR_REGISTRO', f'Registro #{record.id} en tabla "{table.name}"')
         return Response(serialize_record(record, fields), status=201)
 
@@ -1059,17 +1145,21 @@ def table_record_detail_view(request, table_pk, record_pk):
         ok, res = check_table_permission(user, table, 'update')
         if not ok: return res
         values = request.data.get('values', {})
-        for field_id_str, value in values.items():
-            try:
-                field_id = int(field_id_str)
-                rv, created = SystemRecordValue.objects.get_or_create(
-                    record=record, field_id=field_id, defaults={'value': value or ''}
+        
+        err_msg = _validate_record_values(table, fields, values, record_id=record.id)
+        if err_msg:
+            return Response({'error': err_msg}, status=400)
+            
+        for field in fields:
+            val = values.get(str(field.id))
+            if val is None:
+                val = values.get(field.name)
+            
+            if val is not None:
+                SystemRecordValue.objects.update_or_create(
+                    record=record, field=field, defaults={'value': str(val)}
                 )
-                if not created:
-                    rv.value = value or ''
-                    rv.save()
-            except (ValueError, Exception):
-                pass
+                
         log_action(user, table.system, 'EDITAR_REGISTRO', f'Registro #{record.id} editado')
         return Response(serialize_record(record, fields))
     else:
