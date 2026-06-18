@@ -387,22 +387,33 @@ async function renderModalFields() {
         } else if (f.type === 'relation') {
             let options = [];
             if (f.relatedTableId) {
-                if (!relationCache[f.id]) {
+                if (!relationCache[f.id] || !relationCache[`${f.id}_pk`]) {
                     try {
-                        const res = await apiFetch(`/tables/${f.relatedTableId}/records`);
-                        if (res.ok) {
-                            const recs = await res.json();
+                        const [recsRes, fieldsRes] = await Promise.all([
+                            apiFetch(`/tables/${f.relatedTableId}/records`),
+                            apiFetch(`/tables/${f.relatedTableId}/fields`)
+                        ]);
+                        if (recsRes.ok && fieldsRes.ok) {
+                            const recs = await recsRes.json();
+                            const relatedFields = await fieldsRes.json();
+                            const pkField = relatedFields.find(rf => rf.isPrimaryKey);
+
                             const map = {};
+                            const pkMap = {};
                             recs.forEach(r => {
                                 const val = f.relatedFieldName ? r.fieldValues[f.relatedFieldName] : r.id;
                                 map[r.id] = val;
+                                pkMap[r.id] = pkField ? (r.fieldValues[pkField.name] || r.id) : r.id;
                             });
                             relationCache[f.id] = map;
-                            options = Object.entries(map).map(([id, val]) => ({ id, val }));
+                            relationCache[`${f.id}_pk`] = pkMap;
+                            options = Object.entries(map).map(([id, val]) => ({ id, val, pkVal: pkMap[id] }));
                         }
                     } catch (err) { console.error(err); }
                 } else {
-                    options = Object.entries(relationCache[f.id]).map(([id, val]) => ({ id, val }));
+                    const map = relationCache[f.id];
+                    const pkMap = relationCache[`${f.id}_pk`] || {};
+                    options = Object.entries(map).map(([id, val]) => ({ id, val, pkVal: pkMap[id] || id }));
                 }
             }
             const safeOptions = JSON.stringify(options).replace(/"/g, '&quot;');
@@ -457,7 +468,7 @@ function filterRelationOptions(fieldId) {
     const text = document.getElementById(`search_modal_field_${fieldId}`).value.toLowerCase();
     const list = document.getElementById(`list_modal_field_${fieldId}`);
     const data = JSON.parse(list.dataset.options || '[]');
-    const filtered = data.filter(d => String(d.val).toLowerCase().includes(text) || String(d.id).includes(text));
+    const filtered = data.filter(d => String(d.val).toLowerCase().includes(text) || String(d.pkVal || d.id).toLowerCase().includes(text));
     renderRelationOptions(fieldId, filtered);
     list.style.display = 'block';
 }
@@ -471,7 +482,7 @@ function renderRelationOptions(fieldId, options) {
     list.innerHTML = options.map(o => `
         <a href="javascript:void(0)" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors" 
            onclick="selectRelationOption(${fieldId}, '${o.id}', '${o.val.replace(/'/g, "\\'")}')">
-           ${o.val} <span class="text-xs text-gray-400 ml-2">#${o.id}</span>
+           ${o.val} <span class="text-xs text-gray-400 ml-2">(${o.pkVal !== undefined && o.pkVal !== null ? o.pkVal : `#${o.id}`})</span>
         </a>
     `).join('');
 }

@@ -1779,95 +1779,214 @@ def system_dictionary_export_view(request, pk):
     try:
         user, err = require_auth(request)
         if err: return err
-        
+
         system = get_object_or_404(System, id=pk)
         ok, res = check_system_permission(user, pk, 'read')
         if not ok: return res
-        
-        tables = SystemTable.objects.filter(system=system, is_deleted=False).order_by('name')
-        
+
+        tables = list(SystemTable.objects.filter(system=system, is_deleted=False).order_by('name'))
+
         wb = openpyxl.Workbook()
-        
-        # --- Sheet 1: General Info ---
+
+        # ── COLORES ──────────────────────────────────────────────────────────
+        C_TITLE_BG   = "1E3A8A"   # Azul muy oscuro
+        C_HEADER_BG  = "2563EB"   # Azul primario
+        C_TABLE_BG   = "1F2937"   # Gris casi negro
+        C_FIELD_HDR  = "3B82F6"   # Azul claro
+        C_ALT_ROW    = "F0F7FF"   # Azul muy tenue para filas alternas
+        C_DESC_BG    = "F9FAFB"   # Gris clarísimo
+        C_WHITE      = "FFFFFF"
+        C_LIGHT_GRAY = "F3F4F6"
+        C_GRAY_TXT   = "374151"
+
+        def hdr_font(color=C_WHITE, size=10, bold=True):
+            return Font(bold=bold, size=size, color=color)
+
+        def fill(hex_color):
+            return PatternFill(start_color=hex_color, end_color=hex_color, fill_type="solid")
+
+        def center():
+            return Alignment(horizontal="center", vertical="center")
+
+        # ── HOJA 1: RESUMEN DEL SISTEMA ──────────────────────────────────────
         ws_info = wb.active
         ws_info.title = "Resumen del Sistema"
-        
-        # Style for title
-        ws_info.merge_cells('A1:B1')
-        ws_info['A1'] = "Datium - Diccionario de Datos"
-        ws_info['A1'].font = Font(bold=True, size=14, color="2563EB")
-        ws_info['A1'].alignment = Alignment(horizontal="center")
-        
-        ws_info.append(["Propiedad", "Valor"])
-        info_data = [
-            ["Nombre del Sistema", system.name],
-            ["Descripción", system.description or "Sin descripción registrada"],
-            ["Propietario", system.owner.email],
-            ["Fecha de Generación", timezone.now().strftime("%Y-%m-%d %H:%M")],
-            ["Total de Tablas", tables.count()],
-        ]
-        for row in info_data:
-            ws_info.append(row)
-            
-        # Style Header Row (Row 2 because of title)
-        for cell in ws_info[2]:
-            cell.font = Font(bold=True, color="FFFFFF")
-            cell.fill = PatternFill(start_color="2563EB", end_color="2563EB", fill_type="solid")
-        
-        # --- Sheet 2: Data Dictionary ---
-        ws_dict = wb.create_sheet(title="Estructura de Datos")
-        header = [
-            "TABLA", "DESCRIPCIÓN TABLA", "CAMPO", "TIPO", 
-            "PK", "UNICO", "REQUERIDO", "RELACIÓN (DESTINO)"
-        ]
-        ws_dict.append(header)
-        
-        # Style Dictionary Header
-        for cell in ws_dict[1]:
-            cell.font = Font(bold=True, color="FFFFFF")
-            cell.fill = PatternFill(start_color="2563EB", end_color="2563EB", fill_type="solid")
-            cell.alignment = Alignment(horizontal="center")
 
-        last_table_name = None
+        # Fila 1 – Título principal
+        ws_info.merge_cells('A1:D1')
+        ws_info['A1'] = "DATIUM – DICCIONARIO DE DATOS PROFESIONAL"
+        ws_info['A1'].font = Font(bold=True, size=14, color=C_WHITE)
+        ws_info['A1'].fill = fill(C_TITLE_BG)
+        ws_info['A1'].alignment = center()
+        ws_info.row_dimensions[1].height = 38
+
+        # Fila 2 – vacía de separación
+        ws_info.append(["", "", "", ""])
+
+        # Fila 3 – Sección info general
+        ws_info.append(["INFORMACIÓN DEL SISTEMA", "", "", ""])
+        ws_info.merge_cells('A3:D3')
+        ws_info['A3'].font = hdr_font(size=11)
+        ws_info['A3'].fill = fill(C_TABLE_BG)
+        ws_info['A3'].alignment = center()
+        ws_info.row_dimensions[3].height = 22
+
+        # Filas 4-8 – datos del sistema
+        info_rows = [
+            ("Nombre del Sistema",     system.name),
+            ("Descripción",            system.description or "Sin descripción registrada"),
+            ("Propietario",            system.owner.email),
+            ("Fecha de Generación",    timezone.now().strftime("%Y-%m-%d %H:%M")),
+            ("Total de Tablas",        len(tables)),
+        ]
+        for idx, (prop, val) in enumerate(info_rows, start=4):
+            ws_info.append([prop, val, "", ""])
+            ws_info.merge_cells(f'B{idx}:D{idx}')
+            ws_info.cell(row=idx, column=1).font = Font(bold=True, size=10, color=C_GRAY_TXT)
+            ws_info.cell(row=idx, column=1).fill = fill(C_LIGHT_GRAY)
+            ws_info.cell(row=idx, column=2).font = Font(size=10)
+
+        # Filas 9-10 – espaciado
+        ws_info.append(["", "", "", ""])
+        ws_info.append(["", "", "", ""])
+
+        # Fila 11 – Cabecera del índice
+        ws_info.append(["ÍNDICE DE TABLAS", "", "", ""])
+        ws_info.merge_cells('A11:D11')
+        ws_info['A11'].font = hdr_font(size=12)
+        ws_info['A11'].fill = fill(C_TABLE_BG)
+        ws_info['A11'].alignment = center()
+        ws_info.row_dimensions[11].height = 24
+
+        # Fila 12 – Cabecera columnas del índice
+        index_headers = ["Nombre de la Tabla", "Descripción", "Nro. Columnas", "Nro. Registros"]
+        ws_info.append(index_headers)
+        for col_idx in range(1, 5):
+            c = ws_info.cell(row=12, column=col_idx)
+            c.font = hdr_font()
+            c.fill = fill(C_HEADER_BG)
+            c.alignment = center()
+        ws_info.row_dimensions[12].height = 18
+
+        for row_num, t in enumerate(tables, start=13):
+            n_fields  = SystemField.objects.filter(table=t).count()
+            n_records = SystemRecord.objects.filter(table=t, is_deleted=False).count()
+            ws_info.append([t.name, t.description or "Sin descripción", n_fields, n_records])
+            # Filas alternas
+            bg = C_ALT_ROW if row_num % 2 == 0 else C_WHITE
+            for col_idx in range(1, 5):
+                c = ws_info.cell(row=row_num, column=col_idx)
+                c.font = Font(size=10)
+                c.fill = fill(bg)
+
+        # Anchos fijos hoja 1
+        ws_info.column_dimensions['A'].width = 28
+        ws_info.column_dimensions['B'].width = 42
+        ws_info.column_dimensions['C'].width = 16
+        ws_info.column_dimensions['D'].width = 16
+
+        # ── HOJA 2: DICCIONARIO DETALLADO ────────────────────────────────────
+        ws_dict = wb.create_sheet(title="Diccionario de Datos")
+
+        # Fila 1 – Título
+        ws_dict.merge_cells('A1:F1')
+        ws_dict['A1'] = "DICCIONARIO DE DATOS – DETALLE POR TABLA"
+        ws_dict['A1'].font = Font(bold=True, size=14, color=C_WHITE)
+        ws_dict['A1'].fill = fill(C_TITLE_BG)
+        ws_dict['A1'].alignment = center()
+        ws_dict.row_dimensions[1].height = 38
+
+        current_row = 2
+
+        FIELD_HEADERS = [
+            "Nombre del Campo",
+            "Tipo de Dato",
+            "Llave Primaria (PK)",
+            "Único (Unique)",
+            "Obligatorio (Not Null)",
+            "Relación / Tabla Destino",
+        ]
+
         for table in tables:
-            fields = SystemField.objects.filter(table=table).order_by('order_index')
-            for f in fields:
-                rel_target = ""
-                if f.related_table:
-                    rel_target = f.related_table.name
-                
-                row = [
-                    table.name if table.name != last_table_name else "",
-                    table.description or "" if table.name != last_table_name else "",
-                    f.name,
-                    f.type.upper(),
-                    "SÍ" if f.is_primary_key else "",
-                    "SÍ" if f.is_unique else "",
-                    "SÍ" if f.required else "Opcional",
-                    rel_target
-                ]
-                ws_dict.append(row)
-                last_table_name = table.name
-            
-        # Auto-size columns for both sheets
-        for ws in [ws_info, ws_dict]:
-            for col in ws.columns:
-                max_length = 0
-                column = get_column_letter(col[0].column)
-                for cell in col:
-                    # Skip MergedCells for value length check if needed, 
-                    # but usually they have value=None anyway
-                    if hasattr(cell, 'value') and cell.value:
-                        try: max_length = max(max_length, len(str(cell.value)))
-                        except: pass
-                ws.column_dimensions[column].width = min(max_length + 3, 60)
+            # Espacio entre tablas
+            ws_dict.append([""] * 6)
+            current_row += 1
 
+            # ── Cabecera de tabla ────────────────────────────────────────
+            ws_dict.append([f"  TABLA: {table.name.upper()}"] + [""] * 5)
+            ws_dict.merge_cells(start_row=current_row, start_column=1,
+                                end_row=current_row, end_column=6)
+            cell = ws_dict.cell(row=current_row, column=1)
+            cell.font = Font(bold=True, size=12, color=C_WHITE)
+            cell.fill = fill(C_TABLE_BG)
+            cell.alignment = Alignment(horizontal="left", vertical="center", indent=1)
+            ws_dict.row_dimensions[current_row].height = 26
+            current_row += 1
+
+            # ── Descripción de tabla ─────────────────────────────────────
+            ws_dict.append([f"  {table.description or 'Sin descripción registrada'}"] + [""] * 5)
+            ws_dict.merge_cells(start_row=current_row, start_column=1,
+                                end_row=current_row, end_column=6)
+            cell = ws_dict.cell(row=current_row, column=1)
+            cell.font = Font(italic=True, size=10, color=C_GRAY_TXT)
+            cell.fill = fill(C_DESC_BG)
+            cell.alignment = Alignment(horizontal="left", vertical="center", indent=1)
+            ws_dict.row_dimensions[current_row].height = 18
+            current_row += 1
+
+            # ── Cabecera de campos ───────────────────────────────────────
+            ws_dict.append(FIELD_HEADERS)
+            for col_idx in range(1, 7):
+                c = ws_dict.cell(row=current_row, column=col_idx)
+                c.font = hdr_font(size=9)
+                c.fill = fill(C_FIELD_HDR)
+                c.alignment = center()
+            ws_dict.row_dimensions[current_row].height = 18
+            current_row += 1
+
+            # ── Filas de campos ──────────────────────────────────────────
+            fields = list(SystemField.objects.filter(table=table).order_by('order_index'))
+            if not fields:
+                ws_dict.append(["  (Sin campos definidos)"] + [""] * 5)
+                ws_dict.merge_cells(start_row=current_row, start_column=1,
+                                    end_row=current_row, end_column=6)
+                ws_dict.cell(row=current_row, column=1).font = Font(italic=True, size=9, color="9CA3AF")
+                current_row += 1
+            else:
+                for f_idx, f in enumerate(fields):
+                    rel_target = f.related_table.name if f.related_table else ""
+                    ws_dict.append([
+                        f.name,
+                        f.type.upper(),
+                        "SÍ" if f.is_primary_key else "—",
+                        "SÍ" if f.is_unique else "—",
+                        "SÍ" if f.required else "NO (Opcional)",
+                        rel_target,
+                    ])
+                    bg = C_ALT_ROW if f_idx % 2 == 0 else C_WHITE
+                    for col_idx in range(1, 7):
+                        c = ws_dict.cell(row=current_row, column=col_idx)
+                        c.font = Font(size=10)
+                        c.fill = fill(bg)
+                        if col_idx in (3, 4, 5):
+                            c.alignment = center()
+                    # Resaltar en ámbar si es PK
+                    if f.is_primary_key:
+                        ws_dict.cell(row=current_row, column=3).font = Font(bold=True, size=10, color="D97706")
+                    current_row += 1
+
+        # Anchos fijos hoja 2
+        col_widths = [28, 14, 20, 16, 22, 26]
+        for col_idx, w in enumerate(col_widths, start=1):
+            ws_dict.column_dimensions[get_column_letter(col_idx)].width = w
+
+        # ── RESPUESTA HTTP ────────────────────────────────────────────────────
         response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
         now_str = timezone.now().strftime("%Y%m%d_%H%M")
         import re
         safe_name = re.sub(r'[^a-zA-Z0-9_\-]', '', system.name.replace(' ', '_')) or "Sistema"
         response['Content-Disposition'] = f'attachment; filename="Diccionario_{safe_name}_{now_str}.xlsx"'
-        
+
         output = BytesIO()
         wb.save(output)
         output.seek(0)
