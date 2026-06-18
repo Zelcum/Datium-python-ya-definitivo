@@ -25,6 +25,7 @@ from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, 
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment
+from openpyxl.utils import get_column_letter
 
 from . import validators as val
 from .plans import (
@@ -1770,6 +1771,112 @@ def export_records_view(request, table_id: int):
 
 
     return JsonResponse({'status': 'success', 'data': data})
+
+
+@api_view(['GET'])
+def system_dictionary_export_view(request, pk):
+    """Generates a professional Excel data dictionary for the entire system."""
+    try:
+        user, err = require_auth(request)
+        if err: return err
+        
+        system = get_object_or_404(System, id=pk)
+        ok, res = check_system_permission(user, pk, 'read')
+        if not ok: return res
+        
+        tables = SystemTable.objects.filter(system=system, is_deleted=False).order_by('name')
+        
+        wb = openpyxl.Workbook()
+        
+        # --- Sheet 1: General Info ---
+        ws_info = wb.active
+        ws_info.title = "Resumen del Sistema"
+        
+        # Style for title
+        ws_info.merge_cells('A1:B1')
+        ws_info['A1'] = "Datium - Diccionario de Datos"
+        ws_info['A1'].font = Font(bold=True, size=14, color="2563EB")
+        ws_info['A1'].alignment = Alignment(horizontal="center")
+        
+        ws_info.append(["Propiedad", "Valor"])
+        info_data = [
+            ["Nombre del Sistema", system.name],
+            ["Descripción", system.description or "Sin descripción registrada"],
+            ["Propietario", system.owner.email],
+            ["Fecha de Generación", timezone.now().strftime("%Y-%m-%d %H:%M")],
+            ["Total de Tablas", tables.count()],
+        ]
+        for row in info_data:
+            ws_info.append(row)
+            
+        # Style Header Row (Row 2 because of title)
+        for cell in ws_info[2]:
+            cell.font = Font(bold=True, color="FFFFFF")
+            cell.fill = PatternFill(start_color="2563EB", end_color="2563EB", fill_type="solid")
+        
+        # --- Sheet 2: Data Dictionary ---
+        ws_dict = wb.create_sheet(title="Estructura de Datos")
+        header = [
+            "TABLA", "DESCRIPCIÓN TABLA", "CAMPO", "TIPO", 
+            "PK", "UNICO", "REQUERIDO", "RELACIÓN (DESTINO)"
+        ]
+        ws_dict.append(header)
+        
+        # Style Dictionary Header
+        for cell in ws_dict[1]:
+            cell.font = Font(bold=True, color="FFFFFF")
+            cell.fill = PatternFill(start_color="2563EB", end_color="2563EB", fill_type="solid")
+            cell.alignment = Alignment(horizontal="center")
+
+        last_table_name = None
+        for table in tables:
+            fields = SystemField.objects.filter(table=table).order_by('order_index')
+            for f in fields:
+                rel_target = ""
+                if f.related_table:
+                    rel_target = f.related_table.name
+                
+                row = [
+                    table.name if table.name != last_table_name else "",
+                    table.description or "" if table.name != last_table_name else "",
+                    f.name,
+                    f.type.upper(),
+                    "SÍ" if f.is_primary_key else "",
+                    "SÍ" if f.is_unique else "",
+                    "SÍ" if f.required else "Opcional",
+                    rel_target
+                ]
+                ws_dict.append(row)
+                last_table_name = table.name
+            
+        # Auto-size columns for both sheets
+        for ws in [ws_info, ws_dict]:
+            for col in ws.columns:
+                max_length = 0
+                column = get_column_letter(col[0].column)
+                for cell in col:
+                    # Skip MergedCells for value length check if needed, 
+                    # but usually they have value=None anyway
+                    if hasattr(cell, 'value') and cell.value:
+                        try: max_length = max(max_length, len(str(cell.value)))
+                        except: pass
+                ws.column_dimensions[column].width = min(max_length + 3, 60)
+
+        response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        now_str = timezone.now().strftime("%Y%m%d_%H%M")
+        import re
+        safe_name = re.sub(r'[^a-zA-Z0-9_\-]', '', system.name.replace(' ', '_')) or "Sistema"
+        response['Content-Disposition'] = f'attachment; filename="Diccionario_{safe_name}_{now_str}.xlsx"'
+        
+        output = BytesIO()
+        wb.save(output)
+        output.seek(0)
+        response.write(output.read())
+        return response
+    except Exception as e:
+        import traceback
+        logger.error(f"Error generating Excel dictionary: {str(e)}\n{traceback.format_exc()}")
+        return JsonResponse({'error': 'Error crítico al generar el diccionario: ' + str(e)}, status=500)
 @api_view(['GET'])
 def admin_users_page_view(request):
     user, err = require_admin(request)

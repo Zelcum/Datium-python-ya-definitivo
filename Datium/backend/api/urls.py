@@ -45,6 +45,7 @@ urlpatterns = [
     path('systems/<int:pk>', views.systems_detail_view),
     path('systems/<int:pk>/verify-password', views.system_verify_password_view),
     path('systems/<int:pk>/tables', views.system_tables_view),
+    path('systems/<int:pk>/dictionary/', views.system_dictionary_export_view, name='system_dictionary_export'),
     path('systems/<int:system_pk>/tables/<int:table_pk>', views.system_table_detail_view),
     path('systems/<int:pk>/invitations', views.system_invitations_view),
     path('systems/<int:pk>/invite', views.system_invite_view),

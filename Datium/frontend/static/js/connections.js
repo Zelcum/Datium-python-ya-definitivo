@@ -115,51 +115,37 @@ async function downloadDictionary() {
     }
     
     try {
-        const sysLabel = (domSysSelect.options[domSysSelect.selectedIndex] && domSysSelect.options[domSysSelect.selectedIndex].text) || '';
-        let csv = '\uFEFF';
-        csv += [
-            'Sistema_ID',
-            'Sistema_Nombre',
-            'Tabla',
-            'Descripcion_Tabla',
-            'Campo',
-            'Tipo',
-            'Requerido',
-            'Unico',
-            'Relacion_Tabla',
-            'Relacion_Tabla_Nombre',
-        ].join(',') + '\n';
-        for (const table of currentTables) {
-            const fRes = await apiFetch(`/tables/${table.id}/fields`);
-            const fields = fRes.ok ? await fRes.json() : [];
-            fields.forEach(f => {
-                const rt = f.relatedTableId ? currentTables.find(t => t.id === f.relatedTableId) : null;
-                const relName = rt ? rt.name : (f.relatedTableId ? `ID_${f.relatedTableId}` : '');
-                csv += [
-                    csvCell(currentSystemId),
-                    csvCell(sysLabel),
-                    csvCell(table.name),
-                    csvCell(table.description || ''),
-                    csvCell(f.name),
-                    csvCell(f.type),
-                    csvCell(f.required ? 'Si' : 'No'),
-                    csvCell(f.is_unique ? 'Si' : 'No'),
-                    csvCell(f.relatedTableId || ''),
-                    csvCell(relName || '-'),
-                ].join(',') + '\n';
-            });
-        }
+        // We can use a simple toast or a specialized loader if available
+        showSuccess("Preparando diccionario profesional...");
         
-        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement("a");
-        link.setAttribute("href", url);
-        link.setAttribute("download", `Diccionario_Datium_S${currentSystemId}.csv`);
-        link.click();
-        showSuccess("Diccionario técnico descargado");
+        const res = await apiFetch(`/systems/${currentSystemId}/dictionary/`);
+        if (!res) return; // Auth error or logout handled by apiFetch
+        
+        if (res.ok) {
+            const blob = await res.blob();
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            
+            // Get system name for the file if possible
+            const sysOpt = domSysSelect.options[domSysSelect.selectedIndex];
+            const sysName = sysOpt ? sysOpt.text.replace(/\s+/g, '_') : currentSystemId;
+            const nowStr = new Date().toISOString().slice(0, 10);
+            
+            link.setAttribute("href", url);
+            link.setAttribute("download", `Diccionario_${sysName}_${nowStr}.xlsx`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+            
+            showSuccess("Diccionario descargado correctamente");
+        } else {
+            const data = await res.json();
+            showError(data.error || "Error al generar el diccionario");
+        }
     } catch (e) {
-        console.error(e);
-        showError("Error al generar diccionario");
+        console.error("Download error:", e);
+        showError("Error de comunicación con el servidor");
     }
 }
 
