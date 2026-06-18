@@ -136,7 +136,6 @@ function renderTableHead() {
             <th class="px-6 py-3 text-left">
                 <input type="checkbox" id="selectAll" onchange="toggleSelectAll(this)" class="rounded border-gray-300 text-primary focus:ring-primary">
             </th>
-            <th class="px-6 py-3 font-bold text-gray-500 dark:text-gray-400">ID</th>
             ${currentFields.map(f => {
                 const pkIcon = f.isPrimaryKey ? ' <span class="text-amber-500" title="Llave Primaria">🔑</span>' : '';
                 return `<th class="px-6 py-3 font-bold text-gray-500 dark:text-gray-400">${f.name}${pkIcon}</th>`;
@@ -162,7 +161,6 @@ function renderTableBody(records) {
             <td class="px-6 py-4">
                 <input type="checkbox" class="record-checkbox rounded border-gray-300 text-primary focus:ring-primary" value="${r.id}" onchange="updateBulkActions()">
             </td>
-            <td class="px-6 py-4 font-medium text-gray-900 dark:text-white">#${r.id}</td>
             ${currentFields.map(f => {
                 let val = r.displayValues ? r.displayValues[f.name] : r.fieldValues[f.name];
                 

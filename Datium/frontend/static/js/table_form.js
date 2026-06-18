@@ -71,7 +71,7 @@ function updatePreview() {
     const tbody = document.getElementById('previewTableBody');
     if (!thead || !tbody) return;
 
-    let thHtml = `<th class="px-6 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider sticky left-0 bg-gray-50 dark:bg-gray-800/80 z-10 min-w-[60px]">ID</th>`;
+    let thHtml = '';
     fields.forEach(f => {
         let icon = 'text_fields';
         if (f.type === 'number') icon = 'tag';
@@ -101,7 +101,6 @@ function updatePreview() {
     let trHtml = '';
     for (let i = 1; i <= 2; i++) {
         trHtml += `<tr class="hover:bg-gray-50/50 dark:hover:bg-gray-800/30 transition-colors">`;
-        trHtml += `<td class="px-6 py-3.5 text-sm font-medium text-gray-500 sticky left-0 bg-white dark:bg-gray-900/50 z-10 w-auto border-r border-gray-100 dark:border-gray-800/50">#${i}</td>`;
 
         fields.forEach(f => {
             let mockVal = 'Datos...';
