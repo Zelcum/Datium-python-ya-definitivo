@@ -113,15 +113,28 @@ async function resolveForeignKeys(records) {
 
     for (const field of relationFields) {
         if (!relationCache[field.id]) {
-            const res = await apiFetch(`/tables/${field.relatedTableId}/records`);
-            if (res.ok) {
-                const relatedRecords = await res.json();
-                const map = {};
-                relatedRecords.forEach(r => {
-                    const displayVal = field.relatedFieldName ? r.fieldValues[field.relatedFieldName] : r.id;
-                    map[r.id] = displayVal;
-                });
-                relationCache[field.id] = map;
+            try {
+                const [recsRes, fieldsRes] = await Promise.all([
+                    apiFetch(`/tables/${field.relatedTableId}/records`),
+                    apiFetch(`/tables/${field.relatedTableId}/fields`)
+                ]);
+                if (recsRes.ok && fieldsRes.ok) {
+                    const relatedRecords = await recsRes.json();
+                    const relatedFields = await fieldsRes.json();
+                    const pkField = relatedFields.find(rf => rf.isPrimaryKey);
+                    const map = {};
+                    const pkMap = {};
+                    relatedRecords.forEach(r => {
+                        const pkVal = pkField ? (r.fieldValues[pkField.name] || r.id) : r.id;
+                        const displayVal = field.relatedFieldName ? r.fieldValues[field.relatedFieldName] : pkVal;
+                        map[r.id] = displayVal;
+                        pkMap[r.id] = pkVal;
+                    });
+                    relationCache[field.id] = map;
+                    relationCache[`${field.id}_pk`] = pkMap;
+                }
+            } catch (err) {
+                console.error(err);
             }
         }
     }
@@ -358,6 +371,21 @@ async function renderModalFields() {
         let inputHtml = '';
         const baseInputClass = "w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all dark:text-white placeholder-gray-400";
 
+        // Auto-increment fields are filled automatically — show a read-only badge
+        if (f.isAutoIncrement) {
+            return `
+                <div class="col-span-1">
+                    <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest mb-1">
+                        ${f.name} <span class="ml-1 text-purple-500 text-[10px] font-bold">AUTO</span>
+                    </label>
+                    <div class="w-full bg-gray-100 dark:bg-gray-800 border border-dashed border-gray-300 dark:border-gray-600 rounded-xl px-4 py-2.5 text-sm text-gray-400 dark:text-gray-500 italic">
+                        Se asigna automáticamente
+                    </div>
+                    <input type="hidden" id="modal_field_${f.id}">
+                </div>
+            `;
+        }
+
         if (f.type === 'select') {
             const opts = f.options || [];
             inputHtml = `
@@ -401,9 +429,10 @@ async function renderModalFields() {
                             const map = {};
                             const pkMap = {};
                             recs.forEach(r => {
-                                const val = f.relatedFieldName ? r.fieldValues[f.relatedFieldName] : r.id;
+                                const pkVal = pkField ? (r.fieldValues[pkField.name] || r.id) : r.id;
+                                const val = f.relatedFieldName ? r.fieldValues[f.relatedFieldName] : pkVal;
                                 map[r.id] = val;
-                                pkMap[r.id] = pkField ? (r.fieldValues[pkField.name] || r.id) : r.id;
+                                pkMap[r.id] = pkVal;
                             });
                             relationCache[f.id] = map;
                             relationCache[`${f.id}_pk`] = pkMap;
@@ -479,12 +508,17 @@ function renderRelationOptions(fieldId, options) {
         list.innerHTML = '<div class="p-3 text-gray-500 text-sm">No se encontraron resultados</div>';
         return;
     }
-    list.innerHTML = options.map(o => `
+    list.innerHTML = options.map(o => {
+        const pkLabel = (o.pkVal !== undefined && o.pkVal !== null && String(o.pkVal) !== String(o.val))
+            ? `<span class="text-xs text-gray-400 ml-2">(${o.pkVal})</span>`
+            : '';
+        const safeVal = String(o.val).replace(/'/g, "\\'");
+        return `
         <a href="javascript:void(0)" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors" 
-           onclick="selectRelationOption(${fieldId}, '${o.id}', '${o.val.replace(/'/g, "\\'")}')">
-           ${o.val} <span class="text-xs text-gray-400 ml-2">(${o.pkVal !== undefined && o.pkVal !== null ? o.pkVal : `#${o.id}`})</span>
+           onclick="selectRelationOption(${fieldId}, '${o.id}', '${safeVal}')">
+           ${o.val} ${pkLabel}
         </a>
-    `).join('');
+    `}).join('');
 }
 
 function selectRelationOption(fieldId, id, val) {

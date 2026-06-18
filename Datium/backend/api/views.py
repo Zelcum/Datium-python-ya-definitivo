@@ -225,7 +225,9 @@ def serialize_field(f):
     r = {
         'id': f.id, 'name': f.name, 'type': f.type,
         'required': f.required, 'is_unique': f.is_unique,
-        'isPrimaryKey': f.is_primary_key, 'orderIndex': f.order_index,
+        'isPrimaryKey': f.is_primary_key,
+        'isAutoIncrement': f.is_auto_increment,
+        'orderIndex': f.order_index,
     }
     if f.type == 'select':
         r['options'] = list(SystemFieldOption.objects.filter(field=f).values_list('value', flat=True))
@@ -290,7 +292,7 @@ def _validate_record_values(table, fields, values, record_id=None):
             val = values.get(f.name)
         
         # Required check
-        if f.required and (val is None or str(val).strip() == ""):
+        if f.required and not f.is_auto_increment and (val is None or str(val).strip() == ""):
             return f'El campo "{f.name}" es obligatorio.'
         
         if val is not None and str(val).strip() != "":
@@ -886,23 +888,20 @@ def _save_fields(table, fields_data, update=False):
         related_table_id = fd.get('relatedTableId')
         related_display_field_id = fd.get('relatedDisplayFieldId')
         is_pk = fd.get('isPrimaryKey', False)
+        is_ai = fd.get('isAutoIncrement', False)
 
         # Integrity Check: Relation targets must have a PK
         if ftype == 'relation' and related_table_id:
-            # Check if target table has a PK
             target_pk = SystemField.objects.filter(table_id=related_table_id, is_primary_key=True).first()
-            # If creating a new table and relating to it (edge case) or if it's an existing table
             if not target_pk:
-                # We also need to check if the PK is being defined in the same transaction for the SAME table 
-                # (but relation typically points to DIFFERENT tables).
-                # If target is DIFFERENT table, we check its current state.
                 if int(related_table_id) != table.id:
                     raise exceptions.ValidationError(f"La tabla de destino de la relación '{name}' debe tener una Llave Primaria (PK) definida.")
 
         defaults = dict(
-            name=name, type=ftype, required=required, 
+            name=name, type=ftype, required=required,
             is_unique=fd.get('unique', False) or is_pk,
             is_primary_key=is_pk,
+            is_auto_increment=is_ai,
             order_index=i,
             related_table_id=related_table_id,
             related_display_field_id=related_display_field_id,
@@ -1112,20 +1111,36 @@ def table_records_view(request, pk):
         ok, res = check_table_permission(user, table, 'create')
         if not ok: return res
         values = request.data.get('values', {})
-        
+
+        # Auto-fill auto-increment fields
+        for field in fields:
+            if field.is_auto_increment:
+                # Get the max current value for this field
+                existing_vals = SystemRecordValue.objects.filter(field=field).values_list('value', flat=True)
+                max_val = 0
+                for v in existing_vals:
+                    try:
+                        max_val = max(max_val, int(v))
+                    except (ValueError, TypeError):
+                        pass
+                next_val = str(max_val + 1)
+                # Only auto-fill if the user didn't provide a value
+                if not values.get(str(field.id)) and not values.get(field.name):
+                    values[str(field.id)] = next_val
+
         err_msg = _validate_record_values(table, fields, values)
         if err_msg:
             return Response({'error': err_msg}, status=400)
-            
+
         record = SystemRecord.objects.create(table=table, created_by=user)
         for field in fields:
             val = values.get(str(field.id))
             if val is None:
                 val = values.get(field.name)
-            
+
             if val is not None:
                 SystemRecordValue.objects.create(record=record, field=field, value=str(val))
-                
+
         log_action(user, table.system, 'CREAR_REGISTRO', f'Registro #{record.id} en tabla "{table.name}"')
         return Response(serialize_record(record, fields), status=201)
 

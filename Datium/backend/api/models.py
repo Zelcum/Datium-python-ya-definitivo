@@ -142,6 +142,7 @@ class SystemField(models.Model):
     required = models.BooleanField(default=False)
     is_unique = models.BooleanField(default=False)
     is_primary_key = models.BooleanField(default=False)
+    is_auto_increment = models.BooleanField(default=False)
     order_index = models.IntegerField(default=0)
     related_table = models.ForeignKey(SystemTable, on_delete=models.SET_NULL, null=True, blank=True, related_name='related_fields')
     related_display_field = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, blank=True, related_name='display_for_fields')

@@ -221,6 +221,10 @@ function addNewFieldRow(fieldData = null) {
                 <input type="checkbox" class="new-field-pk form-checkbox rounded text-amber-500 border-gray-300 dark:border-gray-600 bg-transparent focus:ring-0 w-4 h-4" onchange="togglePK(this)">
                 <span class="ml-2 text-xs text-gray-500 font-medium">PK</span>
             </label>
+            <label class="flex items-center cursor-pointer" title="Auto Incremental (solo numérico)">
+                <input type="checkbox" class="new-field-ai form-checkbox rounded text-purple-500 border-gray-300 dark:border-gray-600 bg-transparent focus:ring-0 w-4 h-4">
+                <span class="ml-2 text-xs text-gray-500 font-medium">AI</span>
+            </label>
             <button type="button" onclick="const row = this.closest('.bg-gray-50'); row.style.opacity = '0'; setTimeout(() => row.remove(), 300);" class="p-2 text-gray-400 hover:text-red-500 transition-colors" title="Eliminar campo">
                 <span class="material-symbols-outlined text-lg">delete</span>
             </button>
@@ -324,6 +328,9 @@ function addNewFieldRow(fieldData = null) {
             div.querySelector('.new-field-unique').checked = true;
             div.querySelector('.new-field-required').checked = true;
         }
+        if (fieldData.isAutoIncrement) {
+            div.querySelector('.new-field-ai').checked = true;
+        }
         if (fieldData.is_unique) {
             div.querySelector('.new-field-unique').checked = true;
         }
@@ -340,6 +347,8 @@ function togglePK(checkbox) {
         const row = checkbox.closest('.bg-gray-50');
         row.querySelector('.new-field-unique').checked = true;
         row.querySelector('.new-field-required').checked = true;
+        // Suggest auto-increment when PK is checked
+        row.querySelector('.new-field-ai').checked = true;
     }
 }
 
@@ -382,6 +391,7 @@ async function saveTable() {
             required: row.querySelector('.new-field-required').checked,
             unique: row.querySelector('.new-field-unique').checked || false,
             isPrimaryKey: row.querySelector('.new-field-pk').checked || false,
+            isAutoIncrement: row.querySelector('.new-field-ai').checked || false,
             orderIndex: Array.from(fieldRows).indexOf(row),
             options: options,
             relatedTableId: relatedTableId,
