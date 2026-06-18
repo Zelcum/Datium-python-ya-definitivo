@@ -365,11 +365,6 @@ async function renderDataDictionary() {
         `;
 
         fields.forEach(f => {
-            const attrs = [];
-            const isPK = f.name.toLowerCase() === 'id';
-            if (isPK) attrs.push('<span class="bg-amber-400/10 text-amber-500 border border-amber-400/20 px-2 py-0.5 rounded text-[8px] font-black tracking-tighter">PRIMARY KEY</span>');
-            if (f.required) attrs.push('<span class="bg-red-400/10 text-red-500 border border-red-400/20 px-2 py-0.5 rounded text-[8px] font-black tracking-tighter">NOT NULL</span>');
-            
             let relLabel = '-';
             if (f.relatedTableId) {
                 const rt = currentTables.find(t => t.id === f.relatedTableId);

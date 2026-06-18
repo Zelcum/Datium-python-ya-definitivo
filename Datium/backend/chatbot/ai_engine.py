@@ -3,7 +3,7 @@ from openai import OpenAI
 import os
 
 client = OpenAI(
-    api_key=os.getenv("GROQ_API_KEY"),
+    api_key=os.getenv("GROQ_API_KEY") or "placeholder-key-please-set-groq-api-key-in-env",
     base_url="https://api.groq.com/openai/v1"
 )
 
@@ -52,7 +52,7 @@ def build_schema_context(user: User, system_id: Optional[int]) -> str:
             current_sys = t.system_id
             out.append(f"[SISTEMA: {t.system.name} (ID:{t.system_id})]")
         tf = fields_by_table.get(t.id, [])
-        f_list = ", ".join([f"{f.name}:{f.id}({f.type})" for f in tf])
+        f_list = ", ".join([f"{f.name}:{f.id}({f.type}{',PK' if f.is_primary_key else ''})" for f in tf])
         out.append(f" - {t.name} (ID:{t.id}): {f_list}")
     return "\n".join(out)
 

@@ -63,7 +63,8 @@ function updatePreview() {
         if (!nameInput) return null;
         const name = nameInput.value.trim();
         const type = row.querySelector('.new-field-type').value;
-        return { name: name || 'Nueva Columna', type: type };
+        const isPrimaryKey = row.querySelector('.new-field-pk').checked || false;
+        return { name: name || 'Nueva Columna', type: type, isPrimaryKey: isPrimaryKey };
     }).filter(f => f);
 
     const thead = document.getElementById('previewTableHead');
@@ -89,6 +90,7 @@ function updatePreview() {
                 <div class="flex items-center gap-1.5">
                     <span class="material-symbols-outlined text-[14px] text-gray-400 group-hover:text-primary transition-colors">${icon}</span>
                     <span class="text-sm">${f.name}</span>
+                    ${f.isPrimaryKey ? '<span class="text-amber-500 text-[10px]" title="Llave Primaria">🔑</span>' : ''}
                 </div>
             </th>
         `;

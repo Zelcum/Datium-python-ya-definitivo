@@ -137,7 +137,10 @@ function renderTableHead() {
                 <input type="checkbox" id="selectAll" onchange="toggleSelectAll(this)" class="rounded border-gray-300 text-primary focus:ring-primary">
             </th>
             <th class="px-6 py-3 font-bold text-gray-500 dark:text-gray-400">ID</th>
-            ${currentFields.map(f => `<th class="px-6 py-3 font-bold text-gray-500 dark:text-gray-400">${f.name}</th>`).join('')}
+            ${currentFields.map(f => {
+                const pkIcon = f.isPrimaryKey ? ' <span class="text-amber-500" title="Llave Primaria">🔑</span>' : '';
+                return `<th class="px-6 py-3 font-bold text-gray-500 dark:text-gray-400">${f.name}${pkIcon}</th>`;
+            }).join('')}
             ${currentPermissions.update || currentPermissions.delete ? '<th class="px-6 py-3 font-bold text-gray-500 dark:text-gray-400 text-right">Acciones</th>' : ''}
         </tr>
     `;
