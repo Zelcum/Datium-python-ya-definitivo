@@ -31,3 +31,23 @@ urlpatterns = [
 
 urlpatterns += static(settings.STATIC_URL, document_root=settings.STATICFILES_DIRS[0])
 urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+
+import sys
+from django.core.management import call_command
+import threading
+import traceback
+import os
+
+def auto_migrate():
+    log_path = r"c:\Users\Nico9\Desktop\Datium-python-ya-definitivo\Datium\backend\mig_out2.txt"
+    with open(log_path, "a") as f:
+        f.write("Starting auto-migrate thread...\n")
+        try:
+            call_command('migrate')
+            f.write("[DATIUM AUTO-MIGRATE] Migrations applied successfully. DB is ready.\n")
+        except Exception as e:
+            f.write(f"[DATIUM AUTO-MIGRATE] Error: {e}\n")
+            f.write(traceback.format_exc() + "\n")
+
+if 'runserver' in sys.argv or 'daphne' in sys.argv or 'gunicorn' in sys.argv:
+    threading.Thread(target=auto_migrate, daemon=True).start()
