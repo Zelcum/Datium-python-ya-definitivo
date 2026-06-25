@@ -2468,8 +2468,18 @@ def admin_discount_detail_view(request, pk):
 
 @api_view(['GET'])
 def public_plans_view(request):
-    sync_plans_into_db()
-    plans = Plan.objects.filter(is_active=True, name__in=['Free', 'Pro', 'Corporate']).order_by('price')
+    try:
+        sync_plans_into_db()
+        plans = Plan.objects.filter(is_active=True, name__in=['Free', 'Pro', 'Corporate']).order_by('price')
+        list(plans) # force evaluation
+    except Exception as e:
+        import traceback
+        print("Database not ready, running migrations... Exception was:", e)
+        from django.core.management import call_command
+        call_command('migrate', interactive=False)
+        sync_plans_into_db()
+        plans = Plan.objects.filter(is_active=True, name__in=['Free', 'Pro', 'Corporate']).order_by('price')
+
     return Response([{
         'id': p.id,
         'name': p.name,
