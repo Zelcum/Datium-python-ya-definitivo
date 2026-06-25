@@ -318,13 +318,17 @@
                 // Llamar a la API real de Datium si existe el token
                 const token = localStorage.getItem('token');
                 if (token) {
-                    fetch('/api/user/plan', {
+                    let apiUrl = '/api/user/plan';
+                    if (window.location.port === '5500' || window.location.protocol === 'file:') {
+                        apiUrl = 'http://127.0.0.1:8000/api/user/plan';
+                    }
+                    fetch(apiUrl, {
                         method: 'PUT',
                         headers: {
                             'Content-Type': 'application/json',
                             'Authorization': 'Bearer ' + token
                         },
-                        body: JSON.stringify({ planId: planId })
+                        body: JSON.stringify({ newPlanId: planId })
                     }).then(() => {
                         // Redirigir de vuelta al perfil después de 2.5s
                         setTimeout(() => {
