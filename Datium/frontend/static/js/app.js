@@ -594,6 +594,7 @@ window.submitReport = async function () {
 
 document.addEventListener('DOMContentLoaded', () => {
     injectReportSystem();
+    injectNotificationsBell();
 
     if (!document.getElementById('sidebarOverlay')) {
         const overlay = document.createElement('div');
@@ -608,3 +609,150 @@ document.addEventListener('DOMContentLoaded', () => {
         datiumRefreshSessionUser().catch((e) => console.warn(e));
     }
 });
+
+function injectNotificationsBell() {
+    if (!getToken()) return;
+    if (document.getElementById('notifBellContainer')) return;
+    
+    const nav = document.querySelector('aside nav');
+    if (nav) {
+        nav.insertAdjacentHTML('beforeend', `
+            <a href="javascript:void(0)" onclick="openNotificationsModal()" id="notifBellContainer" class="sidebar-link relative" style="margin-top: 0.5rem; border-top: 1px solid var(--border); padding-top: 1rem;">
+                <span class="material-symbols-outlined">notifications</span>
+                Notificaciones
+                <span id="notifBadge" class="absolute top-5 right-4 w-2 h-2 bg-red-500 rounded-full hidden"></span>
+            </a>
+        `);
+    }
+
+    const modalHtml = `
+        <div id="notificationsModal" class="hidden fixed inset-0 bg-transparent z-[90] flex items-center justify-center transition-opacity duration-300">
+            <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity backdrop-blur-sm" onclick="closeNotificationsModal()"></div>
+            <div class="bg-white dark:bg-[#151f2b] rounded-2xl p-6 w-full max-w-md shadow-2xl border border-gray-200 dark:border-gray-700 max-h-[80vh] flex flex-col relative z-10 scale-95 opacity-0 transition-all" id="notifModalContent">
+                <div class="flex justify-between items-center mb-6">
+                    <div class="flex items-center gap-3">
+                        <div class="icon-circle icon-circle-primary">
+                            <span class="material-symbols-outlined text-lg">notifications</span>
+                        </div>
+                        <h3 class="text-lg font-bold text-[#111418] dark:text-white">Notificaciones</h3>
+                    </div>
+                    <button onclick="closeNotificationsModal()" class="text-gray-400 hover:text-gray-600 transition-colors">
+                        <span class="material-symbols-outlined">close</span>
+                    </button>
+                </div>
+                <div class="flex-1 overflow-y-auto pr-2 space-y-3" id="notificationsList">
+                    <div class="text-center py-8 text-gray-400 text-sm">Cargando...</div>
+                </div>
+            </div>
+        </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    setTimeout(loadNotifications, 500);
+}
+
+window.openNotificationsModal = function() {
+    const modal = document.getElementById('notificationsModal');
+    const content = document.getElementById('notifModalContent');
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+    loadNotifications();
+    setTimeout(() => {
+        content.classList.remove('scale-95', 'opacity-0');
+    }, 10);
+};
+
+window.closeNotificationsModal = function() {
+    const modal = document.getElementById('notificationsModal');
+    const content = document.getElementById('notifModalContent');
+    content.classList.add('scale-95', 'opacity-0');
+    setTimeout(() => {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+    }, 200);
+};
+
+window.loadNotifications = async function() {
+    try {
+        const res = await apiFetch('/notifications');
+        if (res.ok) {
+            const data = await res.json();
+            renderNotifications(data);
+            
+            const unreadIds = data.filter(n => !n.is_read).map(n => n.id);
+            if (unreadIds.length > 0) {
+                apiFetch('/notifications/read', {
+                    method: 'POST',
+                    body: JSON.stringify({ notification_ids: unreadIds })
+                });
+                const badge = document.getElementById('notifBadge');
+                if (badge) badge.classList.add('hidden');
+            }
+        }
+    } catch (e) {
+        console.error(e);
+    }
+};
+
+window.renderNotifications = function(notifications) {
+    const list = document.getElementById('notificationsList');
+    if (!notifications || notifications.length === 0) {
+        list.innerHTML = '<div class="text-center py-8 text-gray-400 text-sm">No tienes notificaciones recientes.</div>';
+        const badge = document.getElementById('notifBadge');
+        if (badge) badge.classList.add('hidden');
+        return;
+    }
+
+    const hasUnread = notifications.some(n => !n.is_read);
+    const badge = document.getElementById('notifBadge');
+    if (badge) {
+        if (hasUnread) badge.classList.remove('hidden');
+        else badge.classList.add('hidden');
+    }
+
+    list.innerHTML = notifications.map(n => {
+        let actionButtons = '';
+        if (n.notification_type === 'invitation' && n.related_id && !n.is_read) {
+             actionButtons = `
+                 <div class="mt-3 flex gap-2" id="notif-actions-${n.id}">
+                     <button onclick="respondInvitation(${n.id}, ${n.related_id}, 'accept')" class="px-3 py-1.5 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 rounded-lg text-xs font-bold hover:bg-emerald-100 transition-colors">Aceptar</button>
+                     <button onclick="respondInvitation(${n.id}, ${n.related_id}, 'reject')" class="px-3 py-1.5 bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800 rounded-lg text-xs font-bold hover:bg-red-100 transition-colors">Rechazar</button>
+                 </div>
+             `;
+        }
+
+        return `
+            <div class="p-4 rounded-xl border border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900/30 ${!n.is_read ? 'border-primary/50 bg-blue-50/20 dark:bg-blue-900/10' : ''}">
+                <div class="flex gap-3">
+                    <span class="material-symbols-outlined ${!n.is_read ? 'text-primary' : 'text-gray-400'} mt-0.5">${n.notification_type === 'invitation' ? 'mail' : 'info'}</span>
+                    <div class="flex-1">
+                        <h4 class="text-sm font-bold text-gray-900 dark:text-white">${sanitize(n.title)}</h4>
+                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-1 leading-relaxed">${sanitize(n.message)}</p>
+                        ${actionButtons}
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+};
+
+window.respondInvitation = async function(notifId, shareId, action) {
+    showLoading('Procesando...');
+    try {
+        const res = await apiFetch('/invitations/' + shareId + '/respond', {
+             method: 'POST',
+             body: JSON.stringify({ action })
+        });
+        hideLoading();
+        if (res.ok) {
+             showSuccess('Invitación ' + (action==='accept'?'Aceptada':'Rechazada'));
+             const acts = document.getElementById('notif-actions-' + notifId);
+             if (acts) acts.innerHTML = '<span class="text-xs text-gray-400 font-bold">' + (action==='accept'?'Aceptaste':'Rechazaste') + ' la invitación</span>';
+        } else {
+             const data = await res.json().catch(()=>({}));
+             showError(data.error || 'Error al responder a la invitación');
+        }
+    } catch (e) {
+        hideLoading();
+        showError('Error de red');
+    }
+};

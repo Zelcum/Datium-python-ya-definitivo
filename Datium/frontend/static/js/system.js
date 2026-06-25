@@ -10,6 +10,76 @@ async function init() {
     await loadSystemDetails();
     await loadTables();
     loadSidebarInfo();
+    window.addEventListener('datium:session-user', () => {
+        checkAndLoadCollaborators();
+    });
+    setTimeout(checkAndLoadCollaborators, 1000);
+}
+
+function checkAndLoadCollaborators() {
+    if (window.usuarioActual && window.currentSystemData && window.usuarioActual.id === window.currentSystemData.ownerId) {
+        document.getElementById('collaboratorsSection').classList.remove('hidden');
+        loadSystemCollaborators();
+    }
+}
+async function loadSystemCollaborators() {
+    const listEl = document.getElementById('collaboratorsList');
+    listEl.innerHTML = '<div class="text-center py-4 text-gray-400 text-sm">Cargando...</div>';
+    try {
+        const res = await apiFetch(`/systems/${systemId}/invitations`);
+        if (res.ok) {
+            const data = await res.json();
+            if (data.length === 0) {
+                listEl.innerHTML = '<div class="text-gray-400 text-sm">No hay colaboradores activos ni invitaciones en curso.</div>';
+                return;
+            }
+            listEl.innerHTML = data.map(inv => {
+                const statusBadge = inv.status === 'accepted' ? '<span class="px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 text-[10px] font-bold">Colaborador</span>' :
+                                    inv.status === 'pending' ? '<span class="px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 text-[10px] font-bold">En espera</span>' :
+                                    '<span class="px-2 py-0.5 rounded-full bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 text-[10px] font-bold">Rechazada</span>';
+                return `
+                    <div class="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-900/50 rounded-xl border border-gray-100 dark:border-gray-800">
+                        <div class="flex items-center gap-3">
+                            <div class="h-10 w-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold shadow-sm">
+                                ${(inv.name || inv.email).charAt(0).toUpperCase()}
+                            </div>
+                            <div class="overflow-hidden">
+                                <div class="text-sm font-bold text-[#111418] dark:text-white truncate">${inv.name || 'Usuario Invitado'}</div>
+                                <div class="text-xs text-gray-500 font-medium truncate">${inv.email}</div>
+                                <div class="mt-1">${statusBadge}</div>
+                            </div>
+                        </div>
+                        <button onclick="removeCollaborator(${inv.id})" class="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors" title="Revocar/Eliminar">
+                            <span class="material-symbols-outlined text-lg">delete</span>
+                        </button>
+                    </div>
+                `;
+            }).join('');
+        }
+    } catch (e) {
+        listEl.innerHTML = '<div class="text-red-400 text-sm">Error cargando colaboradores.</div>';
+    }
+}
+
+async function removeCollaborator(shareId) {
+    showConfirm('¿Estás seguro de que deseas revocar el acceso de este usuario o borrar su invitación?', async () => {
+        promptPassword(async () => {
+            showLoading('Procesando...');
+            try {
+                const res = await apiFetch(`/systems/${systemId}/invitations/${shareId}`, { method: 'DELETE' });
+                hideLoading();
+                if (res.ok) {
+                    showSuccess('Acción completada');
+                    loadSystemCollaborators();
+                } else {
+                     showError('Error al procesar la solicitud');
+                }
+            } catch (e) {
+                hideLoading();
+                showError('Error de red');
+            }
+        });
+    });
 }
 
 async function loadSystemDetails() {
@@ -23,6 +93,8 @@ async function loadSystemDetails() {
         const img = document.getElementById('systemLogo');
         img.src = system.imageUrl || '/static/img/Isotipo modo claro.jpeg';
         img.onerror = () => { img.src = '/static/img/Isotipo modo claro.jpeg'; };
+        window.currentSystemData = system;
+        checkAndLoadCollaborators();
     }
 }
 
@@ -463,6 +535,7 @@ async function submitInvite() {
             if (res.ok) {
                 showSuccess('Invitación enviada exitosamente');
                 closeInviteModal();
+                loadSystemCollaborators();
             } else {
                 const err = await res.json().catch(() => ({}));
                 showError(err.error || 'No se pudo enviar la invitación');
@@ -475,3 +548,34 @@ async function submitInvite() {
 }
 
 init();
+
+async function exportSql() {
+    showLoading('Generando script SQL...');
+    try {
+        const res = await apiFetch(`/systems/${systemId}/export-sql`);
+        if (res.ok) {
+            const blob = await res.blob();
+            const a = document.createElement('a');
+            a.href = window.URL.createObjectURL(blob);
+            // Default filename from content-disposition header if available, else static
+            const disp = res.headers.get('Content-Disposition');
+            let filename = `export_system_${systemId}.sql`;
+            if (disp && disp.includes('filename=')) {
+                filename = disp.split('filename=')[1].replace(/"/g, '');
+            }
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(a.href);
+            showSuccess('Exportación SQL generada exitosamente');
+        } else {
+            const err = await res.json().catch(() => ({}));
+            showError(err.error || 'Error al descargar. Verifica que tu plan sea Pro o superior.');
+        }
+    } catch (e) {
+        showError('Error de red al intentar exportar en SQL');
+    } finally {
+        hideLoading();
+    }
+}

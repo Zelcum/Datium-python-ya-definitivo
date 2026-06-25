@@ -87,6 +87,13 @@ class SystemCollaborator(models.Model):
     can_create = models.BooleanField(default=False)
     can_update = models.BooleanField(default=False)
     can_delete = models.BooleanField(default=False)
+    
+    STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('accepted', 'Accepted'),
+        ('rejected', 'Rejected'),
+    ]
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
 
     class Meta:
         unique_together = ('system', 'user')
@@ -275,6 +282,21 @@ class SecurityAudit(models.Model):
     event = models.CharField(max_length=255)
     details = models.TextField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
+
+
+class Notification(models.Model):
+    id = models.BigIntegerField(primary_key=True, default=generate_random_id, editable=False)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='notifications')
+    title = models.CharField(max_length=150)
+    message = models.TextField()
+    is_read = models.BooleanField(default=False)
+    type = models.CharField(max_length=50) # 'invitation', 'info'
+    related_system = models.ForeignKey(System, on_delete=models.SET_NULL, null=True, blank=True)
+    related_collaborator = models.ForeignKey(SystemCollaborator, on_delete=models.SET_NULL, null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
 
 
 # =========================================

@@ -17,7 +17,7 @@ from .models import (
     SystemFieldOption, SystemRecord, SystemRecordValue,
     SystemRelationship, AuditLog, SecurityAudit,
     SystemCollaborator, SystemCollaboratorTable, AppSetting, UserReport, BlockedIP,
-    Discount, Payment
+    Discount, Payment, Notification
 )
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import letter, landscape
@@ -994,35 +994,7 @@ def system_invitations_view(request, pk):
     if sys.owner_id != user.id:
         return Response({'error': 'No autorizado'}, status=403)
         
-    collabs = SystemCollaborator.objects.filter(system=sys).select_related('user')
-    data = []
-    for c in collabs:
-        trows = SystemCollaboratorTable.objects.filter(collaborator=c).select_related('table')
-        table_perms = [
-            {
-                'tableId': r.table_id,
-                'tableName': r.table.name,
-                'can_read': r.can_read,
-                'can_create': r.can_create,
-                'can_update': r.can_update,
-                'can_delete': r.can_delete,
-            }
-            for r in trows
-        ]
-        data.append({
-            'id': c.id,
-            'email': c.user.email,
-            'name': c.user.name,
-            'can_read': c.can_read,
-            'can_create': c.can_create,
-            'can_update': False,
-            'can_delete': False,
-            'tablePermissions': table_perms,
-        })
-    return Response(data)
-
-
-@api_view(['POST'])
+    collabs = SystemCollaborator.objects.filter@api_view(['POST'])
 def system_invite_view(request, pk):
     user, err = require_auth(request)
     if err: return err
@@ -1063,6 +1035,7 @@ def system_invite_view(request, pk):
             'can_create': can_create,
             'can_update': can_update,
             'can_delete': can_delete,
+            'status': 'pending',
         },
     )
 
@@ -1071,7 +1044,19 @@ def system_invite_view(request, pk):
         collab.can_create = can_create
         collab.can_update = can_update
         collab.can_delete = can_delete
+        if collab.status == 'rejected':
+            collab.status = 'pending'
         collab.save()
+        
+    if created or collab.status == 'pending':
+        Notification.objects.create(
+            user=target_user,
+            title=f"Nueva invitación a {sys.name}",
+            message=f"{user.name or user.email} te invitó a colaborar en el sistema '{sys.name}'.",
+            type='invitation',
+            related_system=sys,
+            related_collaborator=collab
+        )
 
     table_perms = request.data.get('tablePerms') or []
     if isinstance(table_perms, list) and table_perms:
@@ -1091,7 +1076,101 @@ def system_invite_view(request, pk):
                 can_delete=bool(row.get('delete', row.get('can_delete', False))),
             )
 
-    return Response({'ok': True, 'message': 'Colaborador actualizado/añadido'}, status=201 if created else 200)
+    return Response({'ok': True, 'message': 'Invitación enviada'}, status=201 if created else 200)
+
+
+
+
+@api_view(['DELETE'])
+def system_invitation_delete_view(request, system_pk, share_pk):
+    user, err = require_auth(request)
+    if err: return err
+    
+    try:
+        collab = SystemCollaborator.objects.get(id=share_pk, system_id=system_pk)
+    except SystemCollaborator.DoesNotExist:
+        return Response({'error': 'Colaboración no encontrada'}, status=404)
+        
+    if collab.system.owner_id != user.id and collab.user_id != user.id:
+        return Response({'error': 'No autorizado'}, status=403)
+        
+    collab.delete()
+    return Response({'ok': True})
+
+
+@api_view(['POST'])
+def respond_invitation_view(request, pk):
+    user, err = require_auth(request)
+    if err: return err
+    
+    try:
+        notification = Notification.objects.get(id=pk, user=user)
+        collab = notification.related_collaborator
+    except Notification.DoesNotExist:
+        return Response({'error': 'Notificación no encontrada'}, status=404)
+        
+    if not collab or collab.user_id != user.id:
+        return Response({'error': 'Invitación inválida'}, status=400)
+        
+    action = request.data.get('action') # 'accept' or 'reject'
+    if action == 'accept':
+        collab.status = 'accepted'
+        collab.save()
+        
+        Notification.objects.create(
+            user=collab.system.owner,
+            title="Invitación aceptada",
+            message=f"{user.name or user.email} ha aceptado colaborar en '{collab.system.name}'.",
+            type='info'
+        )
+        notification.is_read = True
+        notification.save()
+        return Response({'ok': True, 'message': 'Invitación aceptada'})
+        
+    elif action == 'reject':
+        collab.status = 'rejected'
+        collab.save()
+        
+        Notification.objects.create(
+            user=collab.system.owner,
+            title="Invitación rechazada",
+            message=f"{user.name or user.email} ha rechazado colaborar en '{collab.system.name}'.",
+            type='info'
+        )
+        notification.is_read = True
+        notification.save()
+        return Response({'ok': True, 'message': 'Invitación rechazada'})
+        
+    return Response({'error': 'Acción no válida'}, status=400)
+
+
+@api_view(['GET'])
+def user_notifications_view(request):
+    user, err = require_auth(request)
+    if err: return err
+    
+    nots = Notification.objects.filter(user=user).order_by('-created_at')[:50]
+    data = []
+    for n in nots:
+        data.append({
+            'id': n.id,
+            'title': n.title,
+            'message': n.message,
+            'is_read': n.is_read,
+            'type': n.type,
+            'system_id': n.related_system_id,
+            'created_at': n.created_at.isoformat(),
+        })
+    return Response(data)
+
+
+@api_view(['POST'])
+def mark_notifications_read_view(request):
+    user, err = require_auth(request)
+    if err: return err
+        
+    Notification.objects.filter(user=user, is_read=False).update(is_read=True)
+    return Response({'ok': True})
 
 
 @api_view(['DELETE'])
@@ -1863,6 +1942,136 @@ def export_records_view(request, table_id: int):
 
 
     return JsonResponse({'status': 'success', 'data': data})
+
+
+@api_view(['GET'])
+def system_export_sql_view(request, pk):
+    """Generates a raw SQL script to recreate the system database and its data."""
+    try:
+        user, err = require_auth(request)
+        if err: return err
+
+        system = get_object_or_404(System, id=pk)
+        ok, res = check_system_permission(user, pk, 'read')
+        if not ok: return res
+
+        plan = plan_for_user(system.owner)
+        if not plan or plan.name == 'Free':
+            return Response(
+                {'error': 'La exportación SQL solo está disponible en el plan Pro o superior.'}, 
+                status=403
+            )
+
+        tables = list(SystemTable.objects.filter(system=system, is_deleted=False).order_by('name'))
+        
+        sql_lines = []
+        sql_lines.append(f"-- ======================================================================")
+        sql_lines.append(f"-- Datium SQL Export for System: {system.name}")
+        sql_lines.append(f"-- Generated at: {timezone.now().strftime('%Y-%m-%d %H:%M:%S')}")
+        sql_lines.append(f"-- ======================================================================\n")
+        
+        sql_lines.append(f"CREATE DATABASE IF NOT EXISTS `{system.name.replace(' ', '_').lower()}`;\n")
+        sql_lines.append(f"USE `{system.name.replace(' ', '_').lower()}`;\n\n")
+
+        # 1. Create Tables
+        for table in tables:
+            tname = table.name.replace(' ', '_').lower()
+            sql_lines.append(f"-- Table structure for `{tname}`")
+            sql_lines.append(f"CREATE TABLE `{tname}` (")
+            
+            # Fields
+            fields = list(SystemField.objects.filter(table=table).order_by('order_index'))
+            
+            field_lines = []
+            pk_field = None
+            
+            for f in fields:
+                fname = f.name.replace(' ', '_').lower()
+                ftype = "VARCHAR(255)"
+                
+                if f.type == "number":
+                    ftype = "DOUBLE"
+                elif f.type == "boolean":
+                    ftype = "TINYINT(1)"
+                elif f.type == "date":
+                    ftype = "DATE"
+                elif f.type == "time":
+                    ftype = "TIME"
+                elif f.type == "text":
+                    ftype = "TEXT"
+                
+                modifiers = ""
+                if f.required or f.is_primary_key:
+                    modifiers += " NOT NULL"
+                if f.is_auto_increment:
+                    modifiers += " AUTO_INCREMENT"
+                if f.is_unique and not f.is_primary_key:
+                    modifiers += " UNIQUE"
+                    
+                field_lines.append(f"  `{fname}` {ftype}{modifiers}")
+                
+                if f.is_primary_key:
+                    pk_field = fname
+            
+            if pk_field:
+                field_lines.append(f"  PRIMARY KEY (`{pk_field}`)")
+            elif fields:
+                # Si no hay PK definida explícitamente y hay campos, advertir en comentario
+                pass
+                
+            sql_lines.append(",\n".join(field_lines))
+            sql_lines.append(f") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;\n\n")
+
+        # 2. Insert Data
+        for table in tables:
+            tname = table.name.replace(' ', '_').lower()
+            fields = list(SystemField.objects.filter(table=table).order_by('order_index'))
+            records = list(SystemRecord.objects.filter(table=table))
+            
+            if not records:
+                continue
+                
+            sql_lines.append(f"-- Dumping data for table `{tname}`")
+            
+            fnames = [f"`{f.name.replace(' ', '_').lower()}`" for f in fields]
+            
+            insert_batch = []
+            for r in records:
+                vals = {v.field_id: v.value for v in SystemRecordValue.objects.filter(record=r)}
+                row_vals = []
+                for f in fields:
+                    v = vals.get(f.id)
+                    if v is None:
+                        row_vals.append("NULL")
+                    else:
+                        if f.type in ('number', 'boolean'):
+                            if v == '':
+                                row_vals.append("NULL")
+                            else:
+                                row_vals.append(v)
+                        else:
+                            val_escaped = str(v).replace("'", "''")
+                            row_vals.append(f"'{val_escaped}'")
+                
+                insert_batch.append(f"({', '.join(row_vals)})")
+            
+            if insert_batch:
+                sql_lines.append(f"INSERT INTO `{tname}` ({', '.join(fnames)}) VALUES")
+                sql_lines.append(",\n".join(insert_batch) + ";\n\n")
+                
+        sql_lines.append(f"-- ======================================================================")
+        sql_lines.append(f"-- End of SQL script")
+        sql_lines.append(f"-- ======================================================================\n")
+
+        file_content = "\n".join(sql_lines)
+        response = HttpResponse(file_content, content_type='application/sql')
+        filename = f"export_{system.name.replace(' ', '_').lower()}_{timezone.now().strftime('%Y%m%d%H%M')}.sql"
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        return response
+
+    except Exception as e:
+        logger.error(f"Error exports SQL: {e}", exc_info=True)
+        return Response({'error': str(e)}, status=500)
 
 
 @api_view(['GET'])

@@ -198,6 +198,11 @@
                             <span class="material-symbols-outlined text-lg">person_add</span>
                             Invitar
                         </button>
+                        <button onclick="exportSql()"
+                            class="flex-1 sm:flex-none flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-indigo-50 dark:bg-indigo-900/20 border-2 border-indigo-200 dark:border-indigo-800 text-indigo-600 dark:text-indigo-400 font-bold transition-all shadow-sm text-sm whitespace-nowrap hover:border-indigo-500">
+                            <span class="material-symbols-outlined text-lg">database</span>
+                            Exportar SQL
+                        </button>
                         <button onclick="goToCreateTable()"
                             class="flex-1 sm:flex-none flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-primary hover:bg-blue-600 text-white font-bold transition-colors shadow-lg shadow-primary/30 text-sm whitespace-nowrap">
                             <span class="material-symbols-outlined text-lg">add</span>
@@ -214,6 +219,19 @@
                     <div id="tablesList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     </div>
                 </div>
+
+                <div id="collaboratorsSection" class="mt-12 hidden">
+                    <h2 class="text-xl font-bold text-[#111418] dark:text-white mb-4 flex items-center gap-2">
+                        <span class="material-symbols-outlined text-gray-400">group</span>
+                        Colaboradores e Invitaciones
+                    </h2>
+                    <div class="bg-white dark:bg-[#151f2b] border border-gray-200 dark:border-gray-800 rounded-2xl p-6 shadow-sm">
+                         <div id="collaboratorsList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                              <p class="text-gray-500 text-sm">Cargando...</p>
+                         </div>
+                    </div>
+                </div>
+
             </div>
             <input type="file" id="bulkImportInput" class="hidden" accept=".csv,.json" onchange="handleBulkImport(event)">
     </div>
