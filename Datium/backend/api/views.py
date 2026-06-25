@@ -994,7 +994,22 @@ def system_invitations_view(request, pk):
     if sys.owner_id != user.id:
         return Response({'error': 'No autorizado'}, status=403)
         
-    collabs = SystemCollaborator.objects.filter@api_view(['POST'])
+    collabs = SystemCollaborator.objects.filter(system=sys)
+    data = []
+    for c in collabs:
+        data.append({
+            'id': c.id,
+            'name': c.user.name,
+            'email': c.user.email,
+            'status': c.status,
+            'can_read': c.can_read,
+            'can_create': c.can_create,
+            'can_update': c.can_update,
+            'can_delete': c.can_delete,
+        })
+    return Response(data)
+
+@api_view(['POST'])
 def system_invite_view(request, pk):
     user, err = require_auth(request)
     if err: return err
