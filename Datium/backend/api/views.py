@@ -130,7 +130,7 @@ def get_system_permissions(user, system):
     if system.owner_id == user.id or user.role == 'admin':
         return {'read': True, 'create': True, 'update': True, 'delete': True, 'is_owner': True}
     try:
-        collab = SystemCollaborator.objects.get(system=system, user=user)
+        collab = SystemCollaborator.objects.get(system=system, user=user, status='accepted')
         return {
             'read': collab.can_read,
             'create': collab.can_create,
@@ -160,7 +160,7 @@ def tables_queryset_for_user(user, system_id):
         return SystemTable.objects.none()
     if system.owner_id == user.id or user.role == 'admin':
         return SystemTable.objects.filter(system_id=system_id, is_deleted=False).order_by('name')
-    collab = SystemCollaborator.objects.filter(system_id=system_id, user=user).first()
+    collab = SystemCollaborator.objects.filter(system_id=system_id, user=user, status='accepted').first()
     if not collab or not collab.can_read:
         return SystemTable.objects.none()
     rows = SystemCollaboratorTable.objects.filter(collaborator=collab)
@@ -178,7 +178,7 @@ def get_table_permissions(user, table):
     if system.owner_id == user.id or user.role == 'admin':
         return {'read': True, 'create': True, 'update': True, 'delete': True}
     try:
-        collab = SystemCollaborator.objects.get(system=system, user=user)
+        collab = SystemCollaborator.objects.get(system=system, user=user, status='accepted')
     except SystemCollaborator.DoesNotExist:
         return {'read': False, 'create': False, 'update': False, 'delete': False}
     return {
@@ -636,7 +636,7 @@ def systems_list_view(request):
     if request.method == 'GET':
         # Sistemas propios + sistemas donde soy colaborador
         owned = System.objects.filter(owner=user).select_related('owner')
-        collab_ids = SystemCollaborator.objects.filter(user=user, can_read=True).values_list('system_id', flat=True)
+        collab_ids = SystemCollaborator.objects.filter(user=user, can_read=True, status='accepted').values_list('system_id', flat=True)
         collab_systems = System.objects.filter(id__in=collab_ids).select_related('owner')
         
         all_systems = (owned | collab_systems).distinct().order_by('-created_at')

@@ -655,7 +655,7 @@ window.openNotificationsModal = function() {
     const content = document.getElementById('notifModalContent');
     modal.classList.remove('hidden');
     modal.classList.add('flex');
-    loadNotifications();
+    loadNotifications(true);
     setTimeout(() => {
         content.classList.remove('scale-95', 'opacity-0');
     }, 10);
@@ -671,21 +671,23 @@ window.closeNotificationsModal = function() {
     }, 200);
 };
 
-window.loadNotifications = async function() {
+window.loadNotifications = async function(shouldMarkRead = false) {
     try {
         const res = await apiFetch('/notifications');
         if (res.ok) {
             const data = await res.json();
             renderNotifications(data);
             
-            const unreadIds = data.filter(n => !n.is_read).map(n => n.id);
-            if (unreadIds.length > 0) {
-                apiFetch('/notifications/read', {
-                    method: 'POST',
-                    body: JSON.stringify({ notification_ids: unreadIds })
-                });
-                const badge = document.getElementById('notifBadge');
-                if (badge) badge.classList.add('hidden');
+            if (shouldMarkRead) {
+                const unreadIds = data.filter(n => !n.is_read).map(n => n.id);
+                if (unreadIds.length > 0) {
+                    apiFetch('/notifications/read', {
+                        method: 'POST',
+                        body: JSON.stringify({ notification_ids: unreadIds })
+                    });
+                    const badge = document.getElementById('notifBadge');
+                    if (badge) badge.classList.add('hidden');
+                }
             }
         }
     } catch (e) {
@@ -711,11 +713,12 @@ window.renderNotifications = function(notifications) {
 
     list.innerHTML = notifications.map(n => {
         let actionButtons = '';
-        if (n.notification_type === 'invitation' && n.related_id && !n.is_read) {
+        const isInvitation = n.type === 'invitation';
+        if (isInvitation && n.system_id && !n.is_read) {
              actionButtons = `
                  <div class="mt-3 flex gap-2" id="notif-actions-${n.id}">
-                     <button onclick="respondInvitation(${n.id}, ${n.related_id}, 'accept')" class="px-3 py-1.5 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 rounded-lg text-xs font-bold hover:bg-emerald-100 transition-colors">Aceptar</button>
-                     <button onclick="respondInvitation(${n.id}, ${n.related_id}, 'reject')" class="px-3 py-1.5 bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800 rounded-lg text-xs font-bold hover:bg-red-100 transition-colors">Rechazar</button>
+                     <button onclick="respondInvitation(${n.id}, ${n.system_id}, 'accept')" class="px-3 py-1.5 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 rounded-lg text-xs font-bold hover:bg-emerald-100 transition-colors">Aceptar</button>
+                     <button onclick="respondInvitation(${n.id}, ${n.system_id}, 'reject')" class="px-3 py-1.5 bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800 rounded-lg text-xs font-bold hover:bg-red-100 transition-colors">Rechazar</button>
                  </div>
              `;
         }
@@ -723,7 +726,7 @@ window.renderNotifications = function(notifications) {
         return `
             <div class="p-4 rounded-xl border border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900/30 ${!n.is_read ? 'border-primary/50 bg-blue-50/20 dark:bg-blue-900/10' : ''}">
                 <div class="flex gap-3">
-                    <span class="material-symbols-outlined ${!n.is_read ? 'text-primary' : 'text-gray-400'} mt-0.5">${n.notification_type === 'invitation' ? 'mail' : 'info'}</span>
+                    <span class="material-symbols-outlined ${!n.is_read ? 'text-primary' : 'text-gray-400'} mt-0.5">${isInvitation ? 'mail' : 'info'}</span>
                     <div class="flex-1">
                         <h4 class="text-sm font-bold text-gray-900 dark:text-white">${sanitize(n.title)}</h4>
                         <p class="text-xs text-gray-500 dark:text-gray-400 mt-1 leading-relaxed">${sanitize(n.message)}</p>
@@ -735,10 +738,10 @@ window.renderNotifications = function(notifications) {
     }).join('');
 };
 
-window.respondInvitation = async function(notifId, shareId, action) {
+window.respondInvitation = async function(notifId, notifPk, action) {
     showLoading('Procesando...');
     try {
-        const res = await apiFetch('/invitations/' + shareId + '/respond', {
+        const res = await apiFetch('/invitations/' + notifId + '/respond', {
              method: 'POST',
              body: JSON.stringify({ action })
         });
@@ -746,7 +749,10 @@ window.respondInvitation = async function(notifId, shareId, action) {
         if (res.ok) {
              showSuccess('Invitación ' + (action==='accept'?'Aceptada':'Rechazada'));
              const acts = document.getElementById('notif-actions-' + notifId);
-             if (acts) acts.innerHTML = '<span class="text-xs text-gray-400 font-bold">' + (action==='accept'?'Aceptaste':'Rechazaste') + ' la invitación</span>';
+             if (acts) acts.innerHTML = '<span class="text-xs text-emerald-500 font-bold">' + (action==='accept'?'Aceptaste':'Rechazaste') + ' la invitación</span>';
+             if (action === 'accept') {
+                 setTimeout(() => window.location.reload(), 1500);
+             }
         } else {
              const data = await res.json().catch(()=>({}));
              showError(data.error || 'Error al responder a la invitación');
