@@ -314,8 +314,35 @@ def _validate_record_values(table, fields, values, record_id=None):
     return None
 
 
-def log_action(user, system, action, details='', ip=''):
-    AuditLog.objects.create(user=user, system=system, action=action, details=details, ip=ip or '')
+def get_client_ip(request):
+    """Obtiene la IP real del cliente considerando proxies y headers HTTP."""
+    x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+    if x_forwarded_for:
+        # Puede ser una lista separada por comas: client, proxy1, proxy2
+        ip = x_forwarded_for.split(',')[0].strip()
+        if ip:
+            return ip
+    x_real_ip = request.META.get('HTTP_X_REAL_IP')
+    if x_real_ip:
+        return x_real_ip.strip()
+    return request.META.get('REMOTE_ADDR', 'unknown') or 'unknown'
+
+
+def log_action(user, system, action, details='', ip='',
+               table_name=None, record_id=None,
+               status=AuditLog.STATUS_SUCCESS, error_message=None):
+    """Registra una acción en la auditoría del sistema."""
+    AuditLog.objects.create(
+        user=user,
+        system=system,
+        action=action,
+        details=details,
+        ip=ip or '',
+        table_name=table_name,
+        record_id=record_id,
+        status=status,
+        error_message=error_message,
+    )
 
 
 # ═══════════════════════════════════════════
@@ -361,58 +388,59 @@ def login_view(request):
 @api_view(['POST'])
 def registro_view(request):
     try:
-        seed_data()
-        nombre = (request.data.get('nombre') or '').strip()
-        email = (request.data.get('email') or '').strip().lower()
-        password = request.data.get('password', '')
-        phone = (request.data.get('phone') or '').strip()
-        plan_id = request.data.get('planId', 1)
+        with transaction.atomic():
+            seed_data()
+            nombre = (request.data.get('nombre') or '').strip()
+            email = (request.data.get('email') or '').strip().lower()
+            password = request.data.get('password', '')
+            phone = (request.data.get('phone') or '').strip()
+            plan_id = request.data.get('planId', 1)
 
-        if not email or not nombre or not password:
-            return Response({'error': 'Nombre, email y password son obligatorios'}, status=400)
+            if not email or not nombre or not password:
+                return Response({'error': 'Nombre, email y password son obligatorios'}, status=400)
 
-        err_email = val.validate_email(email)
-        if err_email:
-            return Response({'error': err_email}, status=400)
+            err_email = val.validate_email(email)
+            if err_email:
+                return Response({'error': err_email}, status=400)
 
-        err = val.validate_profile_name(nombre)
-        if err:
-            return Response({'error': err}, status=400)
+            err = val.validate_profile_name(nombre)
+            if err:
+                return Response({'error': err}, status=400)
 
-        if User.objects.filter(email__iexact=email).exists():
-            return Response({'error': 'El email ya esta en uso'}, status=400)
+            if User.objects.filter(email__iexact=email).exists():
+                return Response({'error': 'El email ya esta en uso'}, status=400)
 
-        # Unique phone check (if provided)
-        if phone and User.objects.filter(phone=phone).exists():
-            return Response({'error': 'El telefono ya esta registrado en otra cuenta'}, status=400)
+            # Unique phone check (if provided)
+            if phone and User.objects.filter(phone=phone).exists():
+                return Response({'error': 'El telefono ya esta registrado en otra cuenta'}, status=400)
 
-        errp = val.validate_profile_phone(phone)
-        if errp:
-            return Response({'error': errp}, status=400)
+            errp = val.validate_profile_phone(phone)
+            if errp:
+                return Response({'error': errp}, status=400)
 
-        # Resolve plan
-        plan_map = {1: 'Free', '1': 'Free', 2: 'Pro', '2': 'Pro', 3: 'Corporate', '3': 'Corporate'}
-        plan_name = plan_map.get(plan_id) or plan_map.get(str(plan_id), 'Free')
-        plan = Plan.objects.filter(name__iexact=plan_name).first()
+            # Resolve plan
+            plan_map = {1: 'Free', '1': 'Free', 2: 'Pro', '2': 'Pro', 3: 'Corporate', '3': 'Corporate'}
+            plan_name = plan_map.get(plan_id) or plan_map.get(str(plan_id), 'Free')
+            plan = Plan.objects.filter(name__iexact=plan_name).first()
 
-        err_pw = val.validate_new_password(password)
-        if err_pw:
-            return Response({'error': err_pw}, status=400)
+            err_pw = val.validate_new_password(password)
+            if err_pw:
+                return Response({'error': err_pw}, status=400)
 
-        user = User.objects.create(
-            name=nombre,
-            email=email,
-            phone=phone if phone else None,
-            password_hash=make_password(password),
-            plan=plan,
-            avatar_url=None
-        )
-        request.session['user_id'] = user.id
+            user = User.objects.create(
+                name=nombre,
+                email=email,
+                phone=phone if phone else None,
+                password_hash=make_password(password),
+                plan=plan,
+                avatar_url=None
+            )
+            request.session['user_id'] = user.id
 
-        return Response({
-            'token': str(uuid.uuid4()),
-            'usuario': {'id': user.id, 'name': user.name, 'email': user.email, 'avatarUrl': ''}
-        }, status=201)
+            return Response({
+                'token': str(uuid.uuid4()),
+                'usuario': {'id': user.id, 'name': user.name, 'email': user.email, 'avatarUrl': ''}
+            }, status=201)
     except Exception as e:
         logging.error(f"Error en registro: {str(e)}", exc_info=True)
         return Response({'error': f'Error interno: {str(e)}'}, status=500)
@@ -828,10 +856,32 @@ def system_tables_view(request, pk):
             return Response({'error': errn}, status=400)
         desc = request.data.get('description')
         fields_data = request.data.get('fields', [])
-        table = SystemTable.objects.create(system_id=pk, name=name, description=desc)
-        _save_fields(table, fields_data)
-        log_action(user, table.system, 'CREAR_TABLA', f'Tabla "{name}" creada')
-        return Response(serialize_table(table, user), status=201)
+        try:
+            with transaction.atomic():
+                table = SystemTable.objects.create(system_id=pk, name=name, description=desc)
+                _save_fields(table, fields_data)
+            log_action(
+                user, sys_obj, 'CREAR_TABLA',
+                f'Tabla "{name}" creada',
+                ip=get_client_ip(request),
+                table_name=name,
+            )
+            return Response(serialize_table(table, user), status=201)
+        except IntegrityError:
+            return Response(
+                {'error': f'Ya existe una tabla llamada "{name}" en este sistema.'},
+                status=400,
+            )
+        except exceptions.ValidationError as ve:
+            # ValidationError can carry a list or a dict
+            detail = ve.detail
+            if isinstance(detail, list):
+                msg = ' '.join(str(d) for d in detail)
+            elif isinstance(detail, dict):
+                msg = ' '.join(str(v[0]) if isinstance(v, list) else str(v) for v in detail.values())
+            else:
+                msg = str(detail)
+            return Response({'error': msg}, status=400)
 
 
 @api_view(['PUT', 'DELETE'])
@@ -881,21 +931,28 @@ def _save_fields(table, fields_data, update=False):
 
     for i, fd in enumerate(fields_data):
         fid = fd.get('id')
-        name = fd.get('name', '')
+        name = (fd.get('name') or '').strip()
+        if not name:
+            raise exceptions.ValidationError(f"El campo en la posición {i + 1} no tiene nombre.")
         ftype = fd.get('type', 'text')
         required = fd.get('required', False)
         options = fd.get('options', [])
         related_table_id = fd.get('relatedTableId')
         related_display_field_id = fd.get('relatedDisplayFieldId')
-        is_pk = fd.get('isPrimaryKey', False)
-        is_ai = fd.get('isAutoIncrement', False)
+        is_pk = bool(fd.get('isPrimaryKey', False))
+        # Auto-increment is forced on when the field is a primary key —
+        # regardless of what the frontend sends. This removes the need
+        # for the user to manually toggle it.
+        is_ai = True if is_pk else bool(fd.get('isAutoIncrement', False))
 
         # Integrity Check: Relation targets must have a PK
         if ftype == 'relation' and related_table_id:
             target_pk = SystemField.objects.filter(table_id=related_table_id, is_primary_key=True).first()
             if not target_pk:
                 if int(related_table_id) != table.id:
-                    raise exceptions.ValidationError(f"La tabla de destino de la relación '{name}' debe tener una Llave Primaria (PK) definida.")
+                    raise exceptions.ValidationError(
+                        f"La tabla de destino de la relación '{name}' debe tener una Llave Primaria (PK) definida."
+                    )
 
         defaults = dict(
             name=name, type=ftype, required=required,
@@ -1141,7 +1198,13 @@ def table_records_view(request, pk):
             if val is not None:
                 SystemRecordValue.objects.create(record=record, field=field, value=str(val))
 
-        log_action(user, table.system, 'CREAR_REGISTRO', f'Registro #{record.id} en tabla "{table.name}"')
+        log_action(
+            user, table.system, 'CREAR_REGISTRO',
+            f'Registro #{record.id} en tabla "{table.name}"',
+            ip=get_client_ip(request),
+            table_name=table.name,
+            record_id=record.id,
+        )
         return Response(serialize_record(record, fields), status=201)
 
 
@@ -1175,15 +1238,29 @@ def table_record_detail_view(request, table_pk, record_pk):
                 SystemRecordValue.objects.update_or_create(
                     record=record, field=field, defaults={'value': str(val)}
                 )
-                
-        log_action(user, table.system, 'EDITAR_REGISTRO', f'Registro #{record.id} editado')
+
+        log_action(
+            user, table.system, 'EDITAR_REGISTRO',
+            f'Registro #{record.id} editado en tabla "{table.name}"',
+            ip=get_client_ip(request),
+            table_name=table.name,
+            record_id=record.id,
+        )
         return Response(serialize_record(record, fields))
     else:
         ok, res = check_table_permission(user, table, 'delete')
         if not ok: return res
         rid = record.id
+        tname = table.name
+        tsystem = table.system
         record.delete()
-        log_action(user, table.system, 'ELIMINAR_REGISTRO', f'Registro #{rid} eliminado')
+        log_action(
+            user, tsystem, 'ELIMINAR_REGISTRO',
+            f'Registro #{rid} eliminado de tabla "{tname}"',
+            ip=get_client_ip(request),
+            table_name=tname,
+            record_id=rid,
+        )
         return Response({'ok': True})
 
 
@@ -2021,15 +2098,7 @@ def admin_users_page_view(request):
 # ADMIN USER MANAGEMENT (JSON API)
 # ═══════════════════════════════════════════
 
-@api_view(['GET'])
-def admin_stats_view(request):
-    user, err = require_admin(request)
-    if err:
-        return err
-    return Response({
-        'users': User.objects.count(),
-        'systems': System.objects.filter(is_deleted=False).count(),
-    })
+# Duplicate admin_stats_view removed — the canonical version is defined above.
 
 
 @api_view(['GET'])
@@ -2305,9 +2374,19 @@ def admin_plans_view(request):
         plan = get_object_or_404(Plan, id=pid)
         for k, v in fields.items():
             setattr(plan, k, v)
-        plan.save()
+        try:
+            plan.save()
+        except IntegrityError:
+            return Response(
+                {'error': f'Ya existe un plan con el nombre "{fields.get("name")}".'},
+                status=400,
+            )
     else:
-        plan = Plan.objects.create(**fields)
+        # Use update_or_create by name to prevent duplicates
+        plan, _ = Plan.objects.update_or_create(
+            name=fields.get('name'),
+            defaults={k: v for k, v in fields.items() if k != 'name'},
+        )
     return Response({'ok': True, 'id': plan.id})
 
 

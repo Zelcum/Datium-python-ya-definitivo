@@ -1,0 +1,87 @@
+================================================================================
+                    DATIUM - DOCUMENTACIÓN DE PRODUCCIÓN
+================================================================================
+
+Este documento detalla la estructura final del proyecto tras la limpieza profunda,
+las rutas de ejecución necesarias y los pasos para levantar el sistema en producción.
+
+================================================================================
+1. ESTRUCTURA FINAL DEL PROYECTO (LIMPIA)
+================================================================================
+
+Datium/
+├── .env                  -> Archivo de variables de entorno (claves, base de datos)
+├── db.sqlite3            -> Base de datos principal (Se regenera al correr migraciones)
+├── backend/              -> Lógica central (Python / Django)
+│   ├── Datium/           -> Configuración core de Django (settings.py, urls.py)
+│   ├── api/              -> Aplicación principal (modelos, vistas, serializers)
+│   ├── chatbot/          -> Motor de IA y gestión de chats
+│   ├── manage.py         -> Script de gestión de Django
+│   └── requirements.txt  -> Dependencias de backend
+├── frontend/             -> Interfaz de usuario (HTML, CSS, JS)
+│   ├── static/           -> Archivos estáticos (CSS, JS, imágenes, animaciones)
+│   └── templates/        -> Archivos HTML que Django renderiza
+└── media/                -> Archivos subidos por los usuarios
+    └── uploads/          -> Avatares, imágenes de sistema (Limpiados)
+
+Archivos en raíz:
+├── INICIAR_PRODUCCION.bat -> Script rápido para preparar y correr en producción
+├── Procfile               -> Configuración para despliegue (ej. Heroku)
+├── requirements.txt       -> Dependencias globales
+└── runtime.txt            -> Versión de Python a utilizar
+
+================================================================================
+2. QUÉ SE HA LIMPIADO
+================================================================================
+
+- Archivos .txt duplicados o en desuso: Se han eliminado manuales viejos, logs temporales y notas sueltas.
+- Scripts de desarrollo obsoletos: Se eliminó la carpeta 'scripts' y archivos SQL estáticos, ya que Django maneja esto de forma segura.
+- Base de datos de Usuarios: Se eliminó la base de datos anterior (con usuarios default y registros basura).
+- Archivos Media Huérfanos: Se eliminaron 16 archivos de imágenes antiguas de la carpeta uploads que no tenían uso.
+- Procfile/Requirements duplicados: Se dejó una única fuente de verdad.
+
+================================================================================
+3. CÓMO INICIAR EL PROYECTO PARA PRODUCCIÓN
+================================================================================
+
+Dado que la base de datos ha sido purgada para dejar el ambiente limpio, sigue
+estos pasos (o simplemente ejecuta el archivo "INICIAR_PRODUCCION.bat"):
+
+PASO 1: APLICAR MIGRACIONES (Crear la Base de Datos desde 0)
+Abre tu consola en la carpeta Datium/backend y ejecuta:
+> python manage.py migrate
+(Esto recreará todas las tablas limpias de la base de datos).
+
+PASO 2: INICIAR EL SERVIDOR DE PRODUCCIÓN
+> python manage.py runserver
+(Para un entorno de producción real, se debe usar Gunicorn tal como lo especifica
+el Procfile: gunicorn Datium.wsgi:application).
+
+NOTA SOBRE USUARIO ADMINISTRADOR:
+El sistema está diseñado para que la primera vez que intentes hacer Login o
+Registro, la función `seed_data()` evalúe si la base de datos está vacía.
+Al hacerlo, generará automáticamente los Planes estándar y un usuario administrador
+por defecto con el email configurado en el .env (o ibzantrabajo@gmail.com por defecto).
+
+================================================================================
+4. RUTAS PRINCIPALES DEL SISTEMA (URLS)
+================================================================================
+
+Frontend (Vistas del Usuario):
+- /                   -> Página de Inicio (Landing Page)
+- /login.html         -> Iniciar sesión
+- /register.html      -> Registro
+- /dashboard.html     -> Panel Principal (Sistemas)
+- /system.html        -> Detalle del Sistema (Tablas)
+- /table.html         -> Visualización y Gestión de Registros de Tabla
+- /chat.html          -> Interfaz del Asistente IA (Chatbot)
+- /admin.html         -> Panel de Administración Global (Solo Admin)
+
+Backend (APIs):
+- /api/autenticacion/* -> Gestión de accesos
+- /api/systems/*       -> CRUD de Sistemas
+- /api/tables/*        -> CRUD de Tablas y Registros
+- /chatbot/execute/    -> Ejecución de acciones propuestas por la IA
+- /chatbot/status/     -> Verifica el estado del modelo local LLM (Ollama/Groq)
+
+¡El proyecto ahora está consolidado, sin archivos basura y listo para producción!

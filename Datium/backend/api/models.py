@@ -12,7 +12,7 @@ def generate_random_id():
 
 class Plan(models.Model):
     id = models.BigIntegerField(primary_key=True, default=generate_random_id, editable=False)
-    name = models.CharField(max_length=50)
+    name = models.CharField(max_length=50, unique=True)
     max_systems = models.IntegerField()
     max_tables_per_system = models.IntegerField(default=3)
     max_records_per_table = models.IntegerField(default=50000)
@@ -240,12 +240,23 @@ class SystemRelationship(models.Model):
 # =========================================
 
 class AuditLog(models.Model):
+    STATUS_SUCCESS = 'success'
+    STATUS_ERROR = 'error'
+    STATUS_CHOICES = [
+        (STATUS_SUCCESS, 'Éxito'),
+        (STATUS_ERROR, 'Error'),
+    ]
+
     id = models.BigIntegerField(primary_key=True, default=generate_random_id, editable=False)
     user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
     system = models.ForeignKey(System, on_delete=models.CASCADE)
     action = models.CharField(max_length=200)
     details = models.TextField(null=True, blank=True)
-    ip = models.CharField(max_length=50, null=True, blank=True)
+    table_name = models.CharField(max_length=200, null=True, blank=True)
+    record_id = models.BigIntegerField(null=True, blank=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=STATUS_SUCCESS)
+    error_message = models.TextField(null=True, blank=True)
+    ip = models.CharField(max_length=100, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
 

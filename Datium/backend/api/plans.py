@@ -38,8 +38,11 @@ STANDARD_PLANS = [
 
 
 def sync_plans_into_db():
-    if Plan.objects.filter(name="Free").exists():
-        return
+    """
+    Synchronize the standard plans into the database.
+    Uses update_or_create so it is safe to call multiple times (idempotent).
+    The unique constraint on Plan.name prevents duplicates at the DB level.
+    """
     for spec in STANDARD_PLANS:
         Plan.objects.update_or_create(
             name=spec["name"],
