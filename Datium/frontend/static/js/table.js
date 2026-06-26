@@ -114,24 +114,17 @@ async function resolveForeignKeys(records) {
     for (const field of relationFields) {
         if (!relationCache[field.id]) {
             try {
-                const [recsRes, fieldsRes] = await Promise.all([
-                    apiFetch(`/tables/${field.relatedTableId}/records`),
-                    apiFetch(`/tables/${field.relatedTableId}/fields`)
-                ]);
-                if (recsRes.ok && fieldsRes.ok) {
+                const recsRes = await apiFetch(`/tables/${field.relatedTableId}/records`);
+                if (recsRes.ok) {
                     const relatedRecords = await recsRes.json();
-                    const relatedFields = await fieldsRes.json();
-                    const pkField = relatedFields.find(rf => rf.isPrimaryKey);
                     const map = {};
-                    const pkMap = {};
                     relatedRecords.forEach(r => {
-                        const pkVal = pkField ? (r.fieldValues[pkField.name] || r.id) : r.id;
-                        const displayVal = field.relatedFieldName ? r.fieldValues[field.relatedFieldName] : pkVal;
-                        map[r.id] = displayVal;
-                        pkMap[r.id] = pkVal;
+                        // Use displayValues from backend if available, else build #ID label
+                        const firstVal = r.fieldValues ? Object.values(r.fieldValues).find(v => v) : null;
+                        const label = firstVal ? `#${r.id} - ${firstVal}` : `#${r.id}`;
+                        map[r.id] = label;
                     });
                     relationCache[field.id] = map;
-                    relationCache[`${field.id}_pk`] = pkMap;
                 }
             } catch (err) {
                 console.error(err);
@@ -149,9 +142,9 @@ function renderTableHead() {
             <th class="px-6 py-3 text-left">
                 <input type="checkbox" id="selectAll" onchange="toggleSelectAll(this)" class="rounded border-gray-300 text-primary focus:ring-primary">
             </th>
+            <th class="px-4 py-3 text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider whitespace-nowrap">#ID</th>
             ${currentFields.map(f => {
-                const pkIcon = f.isPrimaryKey ? ' <span class="text-amber-500" title="Llave Primaria">🔑</span>' : '';
-                return `<th class="px-6 py-3 font-bold text-gray-500 dark:text-gray-400">${f.name}${pkIcon}</th>`;
+                return `<th class="px-6 py-3 font-bold text-gray-500 dark:text-gray-400">${f.name}</th>`;
             }).join('')}
             ${currentPermissions.update || currentPermissions.delete ? '<th class="px-6 py-3 font-bold text-gray-500 dark:text-gray-400 text-right">Acciones</th>' : ''}
         </tr>
@@ -174,9 +167,13 @@ function renderTableBody(records) {
             <td class="px-6 py-4">
                 <input type="checkbox" class="record-checkbox rounded border-gray-300 text-primary focus:ring-primary" value="${r.id}" onchange="updateBulkActions()">
             </td>
+            <td class="px-4 py-4">
+                <span class="text-xs font-mono font-bold text-gray-400 dark:text-gray-500 bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded-lg">#${r.id}</span>
+            </td>
             ${currentFields.map(f => {
                 let val = r.displayValues ? r.displayValues[f.name] : r.fieldValues[f.name];
-                
+
+                // Fallback to cached relation label if backend didn't resolve it
                 if (!r.displayValues && f.relatedTableId && relationCache[f.id]) {
                     val = relationCache[f.id][val] || val || '';
                 }
@@ -185,6 +182,11 @@ function renderTableBody(records) {
                     if (val === true || val === 'true') val = '<span class="px-2 py-1 rounded-lg bg-emerald-500/10 text-emerald-500 font-bold text-xs">Sí</span>';
                     else if (val === false || val === 'false') val = '<span class="px-2 py-1 rounded-lg bg-red-500/10 text-red-500 font-bold text-xs">No</span>';
                     else val = '<span class="text-gray-400 text-xs">N/A</span>';
+                }
+
+                // Display relation values as a styled chip
+                if (f.type === 'relation' && val) {
+                    val = `<span class="text-xs font-medium text-primary bg-primary/10 px-2 py-1 rounded-lg">${val}</span>`;
                 }
 
                 val = val === null || val === undefined ? '' : val;
@@ -371,21 +373,7 @@ async function renderModalFields() {
         let inputHtml = '';
         const baseInputClass = "w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all dark:text-white placeholder-gray-400";
 
-        // Auto-increment fields are filled automatically — show a read-only badge
-        if (f.isAutoIncrement) {
-            return `
-                <div class="col-span-1">
-                    <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest mb-1">
-                        ${f.name} <span class="ml-1 text-purple-500 text-[10px] font-bold">AUTO</span>
-                    </label>
-                    <div class="w-full bg-gray-100 dark:bg-gray-800 border border-dashed border-gray-300 dark:border-gray-600 rounded-xl px-4 py-2.5 text-sm text-gray-400 dark:text-gray-500 italic">
-                        Se asigna automáticamente
-                    </div>
-                    <input type="hidden" id="modal_field_${f.id}">
-                </div>
-            `;
-        }
-
+        // Auto-increment removed — #ID is always SystemRecord.id
         if (f.type === 'select') {
             const opts = f.options || [];
             inputHtml = `
@@ -417,32 +405,31 @@ async function renderModalFields() {
             if (f.relatedTableId) {
                 if (!relationCache[f.id] || !relationCache[`${f.id}_pk`]) {
                     try {
-                        const [recsRes, fieldsRes] = await Promise.all([
-                            apiFetch(`/tables/${f.relatedTableId}/records`),
-                            apiFetch(`/tables/${f.relatedTableId}/fields`)
+                        const [recsRes] = await Promise.all([
+                            apiFetch(`/tables/${f.relatedTableId}/records`)
                         ]);
-                        if (recsRes.ok && fieldsRes.ok) {
+                        if (recsRes.ok) {
                             const recs = await recsRes.json();
-                            const relatedFields = await fieldsRes.json();
-                            const pkField = relatedFields.find(rf => rf.isPrimaryKey);
-
                             const map = {};
-                            const pkMap = {};
                             recs.forEach(r => {
-                                const pkVal = pkField ? (r.fieldValues[pkField.name] || r.id) : r.id;
-                                const val = f.relatedFieldName ? r.fieldValues[f.relatedFieldName] : pkVal;
-                                map[r.id] = val;
-                                pkMap[r.id] = pkVal;
+                                // Build '#ID - first_text_value' label
+                                const firstVal = r.fieldValues
+                                    ? Object.values(r.fieldValues).find(v => v && v.toString().trim())
+                                    : null;
+                                const label = firstVal ? `#${r.id} - ${firstVal}` : `#${r.id}`;
+                                // Also check if a specific display field was configured
+                                const displayLabel = f.relatedFieldName && r.fieldValues[f.relatedFieldName]
+                                    ? `#${r.id} - ${r.fieldValues[f.relatedFieldName]}`
+                                    : label;
+                                map[r.id] = displayLabel;
                             });
                             relationCache[f.id] = map;
-                            relationCache[`${f.id}_pk`] = pkMap;
-                            options = Object.entries(map).map(([id, val]) => ({ id, val, pkVal: pkMap[id] }));
+                            options = Object.entries(map).map(([id, val]) => ({ id, val }));
                         }
                     } catch (err) { console.error(err); }
                 } else {
                     const map = relationCache[f.id];
-                    const pkMap = relationCache[`${f.id}_pk`] || {};
-                    options = Object.entries(map).map(([id, val]) => ({ id, val, pkVal: pkMap[id] || id }));
+                    options = Object.entries(map).map(([id, val]) => ({ id, val }));
                 }
             }
             const safeOptions = JSON.stringify(options).replace(/"/g, '&quot;');
@@ -509,14 +496,11 @@ function renderRelationOptions(fieldId, options) {
         return;
     }
     list.innerHTML = options.map(o => {
-        const pkLabel = (o.pkVal !== undefined && o.pkVal !== null && String(o.pkVal) !== String(o.val))
-            ? `<span class="text-xs text-gray-400 ml-2">(${o.pkVal})</span>`
-            : '';
         const safeVal = String(o.val).replace(/'/g, "\\'");
         return `
         <a href="javascript:void(0)" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors" 
            onclick="selectRelationOption(${fieldId}, '${o.id}', '${safeVal}')">
-           ${o.val} ${pkLabel}
+           ${o.val}
         </a>
     `}).join('');
 }

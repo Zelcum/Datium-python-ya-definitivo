@@ -225,8 +225,6 @@ def serialize_field(f):
     r = {
         'id': f.id, 'name': f.name, 'type': f.type,
         'required': f.required, 'is_unique': f.is_unique,
-        'isPrimaryKey': f.is_primary_key,
-        'isAutoIncrement': f.is_auto_increment,
         'orderIndex': f.order_index,
     }
     if f.type == 'select':
@@ -259,18 +257,20 @@ def serialize_record(record, fields):
                 rel_id = int(val)
                 rel_rec = SystemRecord.objects.get(id=rel_id)
                 disp_field = f.related_display_field
-                if not disp_field and f.related_table_id:
-                    # Fallback to PK of related table
-                    disp_field = SystemField.objects.filter(table_id=f.related_table_id, is_primary_key=True).first()
                 
                 if disp_field:
-                    # Get the value of the display field in the related record
+                    # Use explicitly chosen display field
                     d_val = SystemRecordValue.objects.filter(record=rel_rec, field=disp_field).first()
-                    display_vals[f.name] = d_val.value if d_val else f"#{rel_id}"
+                    label = d_val.value if d_val else f'#{rel_id}'
                 else:
-                    # Total fallback to first field's value if no PK or display field
-                    first_val = SystemRecordValue.objects.filter(record=rel_rec).exclude(field__type='file').first()
-                    display_vals[f.name] = first_val.value if first_val else f"#{rel_id}"
+                    # Fallback: #ID + value of first non-file text field
+                    first_val = SystemRecordValue.objects.filter(
+                        record=rel_rec
+                    ).exclude(field__type__in=['file', 'relation']).select_related('field').first()
+                    text_part = first_val.value if first_val else ''
+                    label = f'#{rel_id}' if not text_part else f'#{rel_id} - {text_part}'
+                
+                display_vals[f.name] = label
             except Exception:
                 display_vals[f.name] = val
         else:
@@ -945,20 +945,18 @@ def _save_fields(table, fields_data, update=False):
         # for the user to manually toggle it.
         is_ai = True if is_pk else bool(fd.get('isAutoIncrement', False))
 
-        # Integrity Check: Relation targets must have a PK
+        # Integrity Check: Relation targets just need to exist (implicit #ID is always the PK)
         if ftype == 'relation' and related_table_id:
-            target_pk = SystemField.objects.filter(table_id=related_table_id, is_primary_key=True).first()
-            if not target_pk:
-                if int(related_table_id) != table.id:
-                    raise exceptions.ValidationError(
-                        f"La tabla de destino de la relación '{name}' debe tener una Llave Primaria (PK) definida."
-                    )
+            if not SystemTable.objects.filter(id=related_table_id, is_deleted=False).exists():
+                raise exceptions.ValidationError(
+                    f"La tabla de destino de la relación '{name}' no existe."
+                )
 
         defaults = dict(
             name=name, type=ftype, required=required,
-            is_unique=fd.get('unique', False) or is_pk,
-            is_primary_key=is_pk,
-            is_auto_increment=is_ai,
+            is_unique=fd.get('unique', False),
+            is_primary_key=False,   # Always False — SystemRecord.id is the implicit PK
+            is_auto_increment=False, # Always False — not user-configurable anymore
             order_index=i,
             related_table_id=related_table_id,
             related_display_field_id=related_display_field_id,
@@ -1998,7 +1996,7 @@ def system_export_sql_view(request, pk):
             fields = list(SystemField.objects.filter(table=table).order_by('order_index'))
             
             field_lines = []
-            pk_field = None
+            field_lines.append("  `id` INT AUTO_INCREMENT PRIMARY KEY")
             
             for f in fields:
                 fname = f.name.replace(' ', '_').lower()
@@ -2016,23 +2014,12 @@ def system_export_sql_view(request, pk):
                     ftype = "TEXT"
                 
                 modifiers = ""
-                if f.required or f.is_primary_key:
+                if f.required:
                     modifiers += " NOT NULL"
-                if f.is_auto_increment:
-                    modifiers += " AUTO_INCREMENT"
-                if f.is_unique and not f.is_primary_key:
+                if f.is_unique:
                     modifiers += " UNIQUE"
                     
                 field_lines.append(f"  `{fname}` {ftype}{modifiers}")
-                
-                if f.is_primary_key:
-                    pk_field = fname
-            
-            if pk_field:
-                field_lines.append(f"  PRIMARY KEY (`{pk_field}`)")
-            elif fields:
-                # Si no hay PK definida explícitamente y hay campos, advertir en comentario
-                pass
                 
             sql_lines.append(",\n".join(field_lines))
             sql_lines.append(f") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;\n\n")
@@ -2048,12 +2035,12 @@ def system_export_sql_view(request, pk):
                 
             sql_lines.append(f"-- Dumping data for table `{tname}`")
             
-            fnames = [f"`{f.name.replace(' ', '_').lower()}`" for f in fields]
+            fnames = ["`id`"] + [f"`{f.name.replace(' ', '_').lower()}`" for f in fields]
             
             insert_batch = []
             for r in records:
                 vals = {v.field_id: v.value for v in SystemRecordValue.objects.filter(record=r)}
-                row_vals = []
+                row_vals = [str(r.id)]
                 for f in fields:
                     v = vals.get(f.id)
                     if v is None:

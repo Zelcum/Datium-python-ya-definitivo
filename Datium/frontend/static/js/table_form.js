@@ -90,13 +90,12 @@ function updatePreview() {
                 <div class="flex items-center gap-1.5">
                     <span class="material-symbols-outlined text-[14px] text-gray-400 group-hover:text-primary transition-colors">${icon}</span>
                     <span class="text-sm">${f.name}</span>
-                    ${f.isPrimaryKey ? '<span class="text-amber-500 text-[10px]" title="Llave Primaria">🔑</span>' : ''}
                 </div>
             </th>
         `;
     });
     thHtml += `<th class="px-6 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider min-w-[100px]">Acciones</th>`;
-    thead.innerHTML = thHtml;
+    thead.innerHTML = `<th class="px-6 py-3 text-xs font-bold text-gray-500 dark:text-gray-400 min-w-[60px]">#ID</th>` + thHtml;
 
     let trHtml = '';
     for (let i = 1; i <= 2; i++) {
@@ -217,14 +216,6 @@ function addNewFieldRow(fieldData = null) {
                 <input type="checkbox" class="new-field-unique form-checkbox rounded text-blue-500 border-gray-300 dark:border-gray-600 bg-transparent focus:ring-0 w-4 h-4">
                 <span class="ml-2 text-xs text-gray-500 font-medium">Uniq</span>
             </label>
-            <label class="flex items-center cursor-pointer" title="Llave Primaria">
-                <input type="checkbox" class="new-field-pk form-checkbox rounded text-amber-500 border-gray-300 dark:border-gray-600 bg-transparent focus:ring-0 w-4 h-4" onchange="togglePK(this)">
-                <span class="ml-2 text-xs text-gray-500 font-medium">PK</span>
-            </label>
-            <label class="flex items-center cursor-pointer" title="Auto Incremental (solo numérico)">
-                <input type="checkbox" class="new-field-ai form-checkbox rounded text-purple-500 border-gray-300 dark:border-gray-600 bg-transparent focus:ring-0 w-4 h-4">
-                <span class="ml-2 text-xs text-gray-500 font-medium">AI</span>
-            </label>
             <button type="button" onclick="const row = this.closest('.bg-gray-50'); row.style.opacity = '0'; setTimeout(() => row.remove(), 300);" class="p-2 text-gray-400 hover:text-red-500 transition-colors" title="Eliminar campo">
                 <span class="material-symbols-outlined text-lg">delete</span>
             </button>
@@ -260,26 +251,12 @@ function addNewFieldRow(fieldData = null) {
         if (!tId) return;
         relDisplaySelect.innerHTML = '<option value="">Cargando...</option>';
         relDisplaySelect.disabled = true;
-        
-        const pkInfo = div.querySelector('.field-rel-pk-info');
-        pkInfo.classList.add('hidden');
 
         const res = await apiFetch(`/tables/${tId}/fields`);
         if (res.ok) {
             const fields = await res.json();
             relDisplaySelect.innerHTML = '<option value="">Campo Display (Opcional)...</option>' + fields.map(f => `<option value="${f.id}">${f.name}</option>`).join('');
             relDisplaySelect.disabled = false;
-
-            const targetPk = fields.find(f => f.isPrimaryKey);
-            if (targetPk) {
-                pkInfo.innerText = `Ligar a PK: ${targetPk.name}`;
-                pkInfo.classList.remove('hidden');
-                pkInfo.classList.replace('text-red-500', 'text-primary');
-            } else {
-                pkInfo.innerText = `⚠️ La tabla destino no tiene PK.`;
-                pkInfo.classList.remove('hidden');
-                pkInfo.classList.replace('text-primary', 'text-red-500');
-            }
 
             if (selectedFieldId) {
                 relDisplaySelect.value = selectedFieldId;
@@ -323,34 +300,12 @@ function addNewFieldRow(fieldData = null) {
         idInput.value = fieldData.id;
         div.appendChild(idInput);
 
-        if (fieldData.isPrimaryKey) {
-            div.querySelector('.new-field-pk').checked = true;
-            div.querySelector('.new-field-unique').checked = true;
-            div.querySelector('.new-field-required').checked = true;
-        }
-        if (fieldData.isAutoIncrement) {
-            div.querySelector('.new-field-ai').checked = true;
-        }
         if (fieldData.is_unique) {
             div.querySelector('.new-field-unique').checked = true;
         }
     }
 }
 
-function togglePK(checkbox) {
-    if (checkbox.checked) {
-        // Uncheck other PK checkboxes
-        document.querySelectorAll('.new-field-pk').forEach(cb => {
-            if (cb !== checkbox) cb.checked = false;
-        });
-        // PK must be unique and required
-        const row = checkbox.closest('.bg-gray-50');
-        row.querySelector('.new-field-unique').checked = true;
-        row.querySelector('.new-field-required').checked = true;
-        // Suggest auto-increment when PK is checked
-        row.querySelector('.new-field-ai').checked = true;
-    }
-}
 
 async function saveTable() {
     const name = document.getElementById('newTableName').value;
@@ -390,8 +345,6 @@ async function saveTable() {
             type: type,
             required: row.querySelector('.new-field-required').checked,
             unique: row.querySelector('.new-field-unique').checked || false,
-            isPrimaryKey: row.querySelector('.new-field-pk').checked || false,
-            isAutoIncrement: row.querySelector('.new-field-ai').checked || false,
             orderIndex: Array.from(fieldRows).indexOf(row),
             options: options,
             relatedTableId: relatedTableId,
