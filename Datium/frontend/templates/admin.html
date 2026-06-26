@@ -46,6 +46,14 @@
                         <span class="material-symbols-outlined">group</span>
                         Usuarios
                     </button>
+                    <button type="button" onclick="showAdminSection('plans')" id="nav-admin-plans" class="sidebar-link w-full text-left">
+                        <span class="material-symbols-outlined">credit_card</span>
+                        Planes
+                    </button>
+                    <button type="button" onclick="showAdminSection('tyc')" id="nav-admin-tyc" class="sidebar-link w-full text-left">
+                        <span class="material-symbols-outlined">gavel</span>
+                        Términos y Condiciones
+                    </button>
                     <button type="button" onclick="showAdminSection('reports')" id="nav-admin-reports" class="sidebar-link w-full text-left">
                         <span class="material-symbols-outlined">report</span>
                         Reportes
@@ -145,28 +153,128 @@
                     </table>
                 </div>
             </div>
+
+            <!-- ═══ SECCIÓN: TÉRMINOS Y CONDICIONES ═══ -->
+            <div id="admin-section-tyc" class="max-w-7xl mx-auto space-y-6 mb-20 hidden">
+                <div class="surface-card p-6 space-y-6">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <h2 class="text-xl font-black text-[#111418] dark:text-white">Términos y Condiciones</h2>
+                            <p class="text-sm text-gray-500 mt-1">Versión actual: <span id="tyc-version" class="font-bold text-primary">—</span></p>
+                        </div>
+                        <button onclick="saveTyc()" class="datium-btn bg-primary text-white hover:bg-blue-700">
+                            <span class="material-symbols-outlined text-sm">save</span>
+                            Guardar y Publicar
+                        </button>
+                    </div>
+                    <textarea id="tyc-content" rows="18" class="datium-input w-full font-mono text-sm" placeholder="Escribe aquí el contenido HTML o texto de tus Términos y Condiciones..."></textarea>
+                    <p class="text-xs text-gray-400">Al guardar, la versión se incrementará automáticamente y todos los usuarios deberán aceptar los nuevos términos.</p>
+                </div>
+            </div>
+
+            <!-- ═══ SECCIÓN: PLANES ═══ -->
+            <div id="admin-section-plans" class="max-w-7xl mx-auto space-y-6 mb-20 hidden">
+                <div class="flex items-center justify-between">
+                    <h2 class="text-xl font-black text-[#111418] dark:text-white">Gestión de Planes</h2>
+                    <button onclick="openPlanModal()" class="datium-btn bg-primary text-white hover:bg-blue-700">
+                        <span class="material-symbols-outlined text-sm">add</span>
+                        Nuevo Plan
+                    </button>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="plansGrid"></div>
+            </div>
+
+            <!-- ═══ MODAL: CREAR / EDITAR PLAN ═══ -->
+            <div id="planModal" class="fixed inset-0 z-[999] flex items-center justify-center bg-black/60 backdrop-blur-sm hidden">
+                <div class="bg-white dark:bg-[#1e293b] rounded-2xl shadow-2xl w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
+                    <div class="p-6 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between">
+                        <h3 id="planModalTitle" class="text-lg font-black text-[#111418] dark:text-white">Nuevo Plan</h3>
+                        <button onclick="closePlanModal()" class="text-gray-400 hover:text-red-500 transition-colors">
+                            <span class="material-symbols-outlined">close</span>
+                        </button>
+                    </div>
+                    <form id="planForm" class="p-6 space-y-4" onsubmit="return savePlan(event)">
+                        <input type="hidden" id="plan-id" value="">
+                        <div>
+                            <label class="text-xs font-bold text-gray-500 uppercase tracking-widest mb-1 block">Nombre del Plan</label>
+                            <input type="text" id="plan-name" class="datium-input w-full" placeholder="Ej: Pro" required>
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="text-xs font-bold text-gray-500 uppercase tracking-widest mb-1 block">Precio (USD)</label>
+                                <input type="number" step="0.01" id="plan-price" class="datium-input w-full" value="0" required>
+                            </div>
+                            <div>
+                                <label class="text-xs font-bold text-gray-500 uppercase tracking-widest mb-1 block">Máx. Sistemas</label>
+                                <input type="number" id="plan-max-systems" class="datium-input w-full" value="1" required>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="text-xs font-bold text-gray-500 uppercase tracking-widest mb-1 block">Máx. Tablas/Sistema</label>
+                                <input type="number" id="plan-max-tables" class="datium-input w-full" value="3" required>
+                            </div>
+                            <div>
+                                <label class="text-xs font-bold text-gray-500 uppercase tracking-widest mb-1 block">Máx. Registros/Tabla</label>
+                                <input type="number" id="plan-max-records" class="datium-input w-full" value="50000" required>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="text-xs font-bold text-gray-500 uppercase tracking-widest mb-1 block">Máx. Campos/Tabla</label>
+                                <input type="number" id="plan-max-fields" class="datium-input w-full" value="200" required>
+                            </div>
+                            <div>
+                                <label class="text-xs font-bold text-gray-500 uppercase tracking-widest mb-1 block">Almacenamiento (MB)</label>
+                                <input type="number" id="plan-max-storage" class="datium-input w-full" value="1024" required>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-6">
+                            <label class="flex items-center gap-2 cursor-pointer">
+                                <input type="checkbox" id="plan-is-active" checked class="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary">
+                                <span class="text-sm font-bold text-gray-700 dark:text-gray-300">Activo</span>
+                            </label>
+                            <label class="flex items-center gap-2 cursor-pointer">
+                                <input type="checkbox" id="plan-has-ai" class="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary">
+                                <span class="text-sm font-bold text-gray-700 dark:text-gray-300">Asistente IA</span>
+                            </label>
+                        </div>
+                        <button type="submit" class="datium-btn bg-primary text-white hover:bg-blue-700 w-full mt-2">
+                            <span class="material-symbols-outlined text-sm">save</span>
+                            Guardar Plan
+                        </button>
+                    </form>
+                </div>
+            </div>
+
         </main>
     </div>
     <script src="{% static 'js/auth.js' %}"></script>
     <script src="{% static 'js/app.js' %}"></script>
     <script src="{% static 'js/admin.js' %}"></script>
     <script>
+        const ADMIN_SECTIONS = ['users', 'reports', 'tyc', 'plans'];
+        const ADMIN_TITLES = {
+            users: ['Usuarios', 'Gestión de cuentas y acceso.'],
+            reports: ['Reportes', 'Incidencias reportadas por usuarios.'],
+            tyc: ['Términos y Condiciones', 'Actualiza los TyC de la plataforma.'],
+            plans: ['Planes', 'Crea, edita o elimina planes de suscripción.']
+        };
         function showAdminSection(which) {
-            document.getElementById('admin-section-users').classList.toggle('hidden', which !== 'users');
-            document.getElementById('admin-section-reports').classList.toggle('hidden', which !== 'reports');
-            document.getElementById('nav-admin-users').classList.toggle('active', which === 'users');
-            document.getElementById('nav-admin-reports').classList.toggle('active', which === 'reports');
+            ADMIN_SECTIONS.forEach(s => {
+                const sec = document.getElementById('admin-section-' + s);
+                const nav = document.getElementById('nav-admin-' + s);
+                if (sec) sec.classList.toggle('hidden', s !== which);
+                if (nav) nav.classList.toggle('active', s === which);
+            });
             const title = document.getElementById('admin-main-title');
             const sub = document.getElementById('admin-main-sub');
-            if (title && sub) {
-                if (which === 'reports') {
-                    title.textContent = 'Reportes';
-                    sub.textContent = 'Incidencias reportadas por usuarios.';
-                } else {
-                    title.textContent = 'Usuarios';
-                    sub.textContent = 'Gestion de cuentas y acceso.';
-                }
+            if (title && sub && ADMIN_TITLES[which]) {
+                title.textContent = ADMIN_TITLES[which][0];
+                sub.textContent = ADMIN_TITLES[which][1];
             }
+            if (which === 'tyc') loadTyc();
+            if (which === 'plans') loadPlans();
         }
     </script>
 </body>

@@ -193,4 +193,159 @@ function downloadBlob(blob, filename) {
     }, 2000);
 }
 
+// ═══════════════════════════════════════════════════════
+// TÉRMINOS Y CONDICIONES
+// ═══════════════════════════════════════════════════════
+
+window.loadTyc = async function () {
+    const res = await apiFetch('/admin/tyc');
+    if (!res || !res.ok) return;
+    const data = await res.json();
+    const el = document.getElementById('tyc-content');
+    const ver = document.getElementById('tyc-version');
+    if (el) el.value = data.content || '';
+    if (ver) ver.textContent = data.version || '1';
+};
+
+window.saveTyc = async function () {
+    const content = (document.getElementById('tyc-content') || {}).value;
+    if (!content || !content.trim()) return showError('El contenido no puede estar vacío');
+    showLoading('Guardando Términos...');
+    const res = await apiFetch('/admin/tyc', {
+        method: 'POST',
+        body: JSON.stringify({ content }),
+    });
+    hideLoading();
+    if (res && res.ok) {
+        const data = await res.json();
+        const ver = document.getElementById('tyc-version');
+        if (ver) ver.textContent = data.version || '';
+        showSuccess('Términos actualizados a la versión ' + (data.version || ''));
+    } else {
+        showError('No se pudieron guardar los Términos');
+    }
+};
+
+// ═══════════════════════════════════════════════════════
+// GESTIÓN DE PLANES
+// ═══════════════════════════════════════════════════════
+
+let allPlans = [];
+
+window.loadPlans = async function () {
+    const res = await apiFetch('/admin/plans');
+    if (!res || !res.ok) return;
+    allPlans = await res.json();
+    renderPlans(allPlans);
+};
+
+function renderPlans(plans) {
+    const grid = document.getElementById('plansGrid');
+    if (!grid) return;
+    if (!plans.length) {
+        grid.innerHTML = '<p class="text-gray-500 col-span-full text-center py-12 font-bold">No hay planes registrados.</p>';
+        return;
+    }
+    grid.innerHTML = plans.map(p => `
+        <div class="surface-card p-6 flex flex-col gap-4 relative group">
+            <div class="flex items-center justify-between">
+                <h3 class="text-lg font-black text-[#111418] dark:text-white">${sanitize(p.name)}</h3>
+                ${p.is_active
+                    ? '<span class="badge badge-success">Activo</span>'
+                    : '<span class="badge badge-danger">Inactivo</span>'}
+            </div>
+            <div class="text-3xl font-black text-primary">$${Number(p.price).toFixed(2)}<span class="text-xs font-bold text-gray-400 ml-1">/mes</span></div>
+            <div class="grid grid-cols-2 gap-2 text-xs">
+                <div class="flex items-center gap-1.5 text-gray-500"><span class="material-symbols-outlined text-sm">database</span>${p.max_systems} Sistemas</div>
+                <div class="flex items-center gap-1.5 text-gray-500"><span class="material-symbols-outlined text-sm">table_chart</span>${p.max_tables_per_system} Tablas</div>
+                <div class="flex items-center gap-1.5 text-gray-500"><span class="material-symbols-outlined text-sm">storage</span>${p.max_storage_mb} MB</div>
+                <div class="flex items-center gap-1.5 text-gray-500"><span class="material-symbols-outlined text-sm">data_array</span>${p.max_records_per_table.toLocaleString()} Registros</div>
+                <div class="flex items-center gap-1.5 text-gray-500"><span class="material-symbols-outlined text-sm">view_column</span>${p.max_fields_per_table} Campos</div>
+                <div class="flex items-center gap-1.5 ${p.has_ai_assistant ? 'text-green-500' : 'text-gray-400'}"><span class="material-symbols-outlined text-sm">smart_toy</span>${p.has_ai_assistant ? 'IA Activa' : 'Sin IA'}</div>
+            </div>
+            <div class="flex gap-2 mt-auto pt-2 border-t border-gray-100 dark:border-gray-700">
+                <button onclick="editPlan(${p.id})" class="datium-btn bg-slate-100 dark:bg-slate-800 text-gray-700 dark:text-gray-300 hover:bg-slate-200 dark:hover:bg-slate-700 flex-1 text-xs">
+                    <span class="material-symbols-outlined text-sm">edit</span> Editar
+                </button>
+                <button onclick="deletePlan(${p.id}, '${sanitize(p.name)}')" class="datium-btn bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30 flex-1 text-xs">
+                    <span class="material-symbols-outlined text-sm">delete</span> Eliminar
+                </button>
+            </div>
+        </div>
+    `).join('');
+}
+
+window.openPlanModal = function (plan) {
+    document.getElementById('planModalTitle').textContent = plan ? 'Editar Plan' : 'Nuevo Plan';
+    document.getElementById('plan-id').value = plan ? plan.id : '';
+    document.getElementById('plan-name').value = plan ? plan.name : '';
+    document.getElementById('plan-price').value = plan ? plan.price : 0;
+    document.getElementById('plan-max-systems').value = plan ? plan.max_systems : 1;
+    document.getElementById('plan-max-tables').value = plan ? plan.max_tables_per_system : 3;
+    document.getElementById('plan-max-records').value = plan ? plan.max_records_per_table : 50000;
+    document.getElementById('plan-max-fields').value = plan ? plan.max_fields_per_table : 200;
+    document.getElementById('plan-max-storage').value = plan ? plan.max_storage_mb : 1024;
+    document.getElementById('plan-is-active').checked = plan ? plan.is_active : true;
+    document.getElementById('plan-has-ai').checked = plan ? plan.has_ai_assistant : false;
+    document.getElementById('planModal').classList.remove('hidden');
+};
+
+window.closePlanModal = function () {
+    document.getElementById('planModal').classList.add('hidden');
+};
+
+window.savePlan = async function (e) {
+    e.preventDefault();
+    const id = document.getElementById('plan-id').value || null;
+    const payload = {
+        id: id ? Number(id) : undefined,
+        name: document.getElementById('plan-name').value.trim(),
+        price: parseFloat(document.getElementById('plan-price').value) || 0,
+        max_systems: parseInt(document.getElementById('plan-max-systems').value) || 1,
+        max_tables_per_system: parseInt(document.getElementById('plan-max-tables').value) || 3,
+        max_records_per_table: parseInt(document.getElementById('plan-max-records').value) || 50000,
+        max_fields_per_table: parseInt(document.getElementById('plan-max-fields').value) || 200,
+        max_storage_mb: parseInt(document.getElementById('plan-max-storage').value) || 1024,
+        is_active: document.getElementById('plan-is-active').checked,
+        has_ai_assistant: document.getElementById('plan-has-ai').checked,
+    };
+    if (!payload.name) return showError('El nombre es obligatorio');
+    showLoading('Guardando plan...');
+    const res = await apiFetch('/admin/plans', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+    });
+    hideLoading();
+    if (res && res.ok) {
+        showSuccess(id ? 'Plan actualizado' : 'Plan creado');
+        closePlanModal();
+        loadPlans();
+    } else {
+        const err = await res.json().catch(() => ({}));
+        showError(err.error || 'Error al guardar el plan');
+    }
+    return false;
+};
+
+window.editPlan = function (planId) {
+    const plan = allPlans.find(p => p.id === planId);
+    if (plan) openPlanModal(plan);
+};
+
+window.deletePlan = function (planId, planName) {
+    showConfirm(`¿Eliminar el plan "${planName}"? Los usuarios con este plan no serán eliminados pero quedarán sin plan asignado.`, () => {
+        promptPassword(async () => {
+            showLoading('Eliminando...');
+            const res = await apiFetch(`/admin/plans/${planId}`, { method: 'DELETE' });
+            hideLoading();
+            if (res && res.ok) {
+                showSuccess('Plan eliminado');
+                loadPlans();
+            } else {
+                showError('No se pudo eliminar');
+            }
+        });
+    });
+};
+
 document.addEventListener('DOMContentLoaded', initAdmin);
