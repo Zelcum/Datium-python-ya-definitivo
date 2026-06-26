@@ -12,6 +12,11 @@
     flex-direction: column;
     transition: transform var(--transition-smooth);
     z-index: 45;
+    height: 100vh;
+    position: sticky;
+    top: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
 }
 
 .layout-main {
@@ -47,7 +52,9 @@
         inset: 0;
         width: 80%;
         max-width: 18rem;
+        height: 100dvh; /* dynamic viewport height for mobile browsers */
         transform: translateX(-100%);
+        overflow-y: auto;
     }
 
     .layout-sidebar.open {
