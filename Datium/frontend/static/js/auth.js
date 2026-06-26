@@ -144,7 +144,13 @@ async function login() {
                     window.datiumCacheUserFromAuth(data.usuario);
                 }
             }
-            showSuccess('Bienvenido', () => { redirigirAIndex(); });
+            showSuccess('Bienvenido', () => { 
+                if (data.usuario && data.usuario.role === 'admin') {
+                    window.location.href = 'admin.html';
+                } else {
+                    redirigirAIndex(); 
+                }
+            });
         } else {
             showError(data.error || 'Credenciales invalidas');
         }

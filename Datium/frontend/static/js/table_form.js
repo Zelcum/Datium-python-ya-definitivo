@@ -405,7 +405,7 @@ async function saveTable() {
             btn.disabled = false;
             try {
                 const errorData = await res.json();
-                showError(errorData.message || 'Error creando tabla');
+                showError(errorData.message || errorData.error || 'Error creando tabla');
             } catch (e) {
                 showError('Error creando tabla');
             }
