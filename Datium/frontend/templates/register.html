@@ -330,7 +330,7 @@
                                         ${p.has_ai_assistant ? '<li class="flex items-center gap-2"><span class="material-symbols-outlined text-green-500 font-bold">check_circle</span>Asistente IA incluido</li>' : ''}
                                     </ul>
                                 </div>
-                                <button onclick="seleccionarPlan(${p.id})"
+                                <button onclick="seleccionarPlan(${p.id}, ${parseFloat(p.price) || 0})"
                                     class="mt-6 flex w-full cursor-pointer items-center justify-center overflow-hidden rounded-lg h-11 px-5 ${isFirst ? 'bg-primary/20 text-primary' : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300'} text-base font-bold transition-all">
                                     <span class="truncate">${isFirst ? 'Plan seleccionado' : 'Seleccionar plan'}</span>
                                 </button>
@@ -339,6 +339,8 @@
 
                     planSeleccionado = plans[0].id;
                     window.planSeleccionado = planSeleccionado;
+                    window.planSeleccionadoPrecio = parseFloat(plans[0].price) || 0;
+
                 }
             } catch (e) {
                 grid.innerHTML = '<div class="col-span-full text-center py-8 text-red-400 text-sm">Error al cargar planes</div>';
@@ -347,9 +349,10 @@
 
         loadPlansFromAPI();
 
-        function seleccionarPlan(planId) {
+        function seleccionarPlan(planId, planPrecio) {
             planSeleccionado = planId;
             window.planSeleccionado = planId;
+            window.planSeleccionadoPrecio = parseFloat(planPrecio) || 0;
             document.querySelectorAll('[id^="plan-"]').forEach(card => {
                 const btn = card.querySelector('button');
                 card.classList.remove('border-primary', 'ring-2', 'ring-primary');
@@ -525,11 +528,12 @@
                 return;
             }
 
-            const planId = window.planSeleccionado || 1;
-            if (planId == 1) {
-                registro(); // Registro directo para Free
+            // Check by price: 0 = Free, > 0 = paid plan requires payment gateway
+            const precio = parseFloat(window.planSeleccionadoPrecio) || 0;
+            if (precio <= 0) {
+                registro(); // Free plan: direct registration
             } else {
-                abrirPasarela();
+                abrirPasarela(); // Paid plan: show payment modal first
             }
         };
 
