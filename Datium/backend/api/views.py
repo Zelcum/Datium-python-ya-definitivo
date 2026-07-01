@@ -222,10 +222,16 @@ def serialize_table(t, user=None):
 
 
 def serialize_field(f):
+    constraints = {}
+    try:
+        constraints = json.loads(f.constraints_json or '{}')
+    except Exception:
+        constraints = {}
     r = {
         'id': f.id, 'name': f.name, 'type': f.type,
         'required': f.required, 'is_unique': f.is_unique,
         'orderIndex': f.order_index,
+        'constraints': constraints,
     }
     if f.type == 'select':
         r['options'] = list(SystemFieldOption.objects.filter(field=f).values_list('value', flat=True))
@@ -279,12 +285,151 @@ def serialize_record(record, fields):
     return {'id': record.id, 'fieldValues': fv, 'displayValues': display_vals}
  
  
+def validate_field_constraints(field, val, values):
+    """
+    Validates a single field value against the json constraints in SystemField.
+    """
+    if val is None or str(val).strip() == "":
+        return None
+    try:
+        constraints = json.loads(field.constraints_json or '{}')
+    except Exception:
+        return None
+
+    ftype = field.type
+    val_str = str(val).strip()
+
+    # Text rules
+    if ftype == 'text':
+        min_len = constraints.get('min_length')
+        if min_len is not None:
+            try:
+                min_len = int(min_len)
+                if len(val_str) < min_len:
+                    return f'El campo "{field.name}" debe tener al menos {min_len} caracteres.'
+            except (ValueError, TypeError):
+                pass
+        max_len = constraints.get('max_length')
+        if max_len is not None:
+            try:
+                max_len = int(max_len)
+                if len(val_str) > max_len:
+                    return f'El campo "{field.name}" no puede tener más de {max_len} caracteres.'
+            except (ValueError, TypeError):
+                pass
+        pattern = constraints.get('pattern')
+        if pattern:
+            import re
+            try:
+                if not re.match(pattern, val_str):
+                    return f'El campo "{field.name}" no coincide con el formato requerido.'
+            except Exception:
+                pass
+
+    # Number rules
+    elif ftype == 'number':
+        try:
+            num_val = float(val_str)
+            min_val = constraints.get('min_value')
+            if min_val is not None:
+                try:
+                    min_val = float(min_val)
+                    if num_val < min_val:
+                        return f'El campo "{field.name}" debe ser mayor o igual a {min_val}.'
+                except (ValueError, TypeError):
+                    pass
+            max_val = constraints.get('max_value')
+            if max_val is not None:
+                try:
+                    max_val = float(max_val)
+                    if num_val > max_val:
+                        return f'El campo "{field.name}" debe ser menor o igual a {max_val}.'
+                except (ValueError, TypeError):
+                    pass
+        except (ValueError, TypeError):
+            return f'El campo "{field.name}" debe ser un número válido.'
+
+    # Email rules
+    elif ftype == 'email':
+        allowed_domains = constraints.get('allowed_domains')
+        if allowed_domains:
+            if isinstance(allowed_domains, str):
+                allowed_domains = [d.strip().lower() for d in allowed_domains.split(',') if d.strip()]
+            if allowed_domains:
+                domain = val_str.split('@')[-1].lower()
+                if domain not in [d.lower() for d in allowed_domains]:
+                    return f'El campo "{field.name}" debe pertenecer a uno de los dominios permitidos: {", ".join(allowed_domains)}.'
+
+    # Date rules
+    elif ftype == 'date':
+        from datetime import datetime
+        try:
+            cur_date = datetime.strptime(val_str, '%Y-%m-%d').date()
+            min_date_str = constraints.get('min_date')
+            if min_date_str:
+                try:
+                    min_date = datetime.strptime(min_date_str, '%Y-%m-%d').date()
+                    if cur_date < min_date:
+                        return f'La fecha del campo "{field.name}" no puede ser anterior a {min_date_str}.'
+                except (ValueError, TypeError):
+                    pass
+            max_date_str = constraints.get('max_date')
+            if max_date_str:
+                try:
+                    max_date = datetime.strptime(max_date_str, '%Y-%m-%d').date()
+                    if cur_date > max_date:
+                        return f'La fecha del campo "{field.name}" no puede ser posterior a {max_date_str}.'
+                except (ValueError, TypeError):
+                    pass
+
+            # min_date_field
+            min_field_identifier = constraints.get('min_date_field')
+            if min_field_identifier:
+                other_field = field.table.systemfield_set.filter(
+                    Q(id=min_field_identifier) | Q(name=min_field_identifier)
+                ).first()
+                if other_field:
+                    other_val = values.get(str(other_field.id))
+                    if other_val is None:
+                        other_val = values.get(other_field.name)
+                    if other_val and str(other_val).strip():
+                        try:
+                            other_date = datetime.strptime(str(other_val).strip(), '%Y-%m-%d').date()
+                            if cur_date < other_date:
+                                return f'La fecha de "{field.name}" no puede ser anterior a la de "{other_field.name}".'
+                        except (ValueError, TypeError):
+                            pass
+
+            # max_date_field
+            max_field_identifier = constraints.get('max_date_field')
+            if max_field_identifier:
+                other_field = field.table.systemfield_set.filter(
+                    Q(id=max_field_identifier) | Q(name=max_field_identifier)
+                ).first()
+                if other_field:
+                    other_val = values.get(str(other_field.id))
+                    if other_val is None:
+                        other_val = values.get(other_field.name)
+                    if other_val and str(other_val).strip():
+                        try:
+                            other_date = datetime.strptime(str(other_val).strip(), '%Y-%m-%d').date()
+                            if cur_date > other_date:
+                                return f'La fecha de "{field.name}" no puede ser posterior a la de "{other_field.name}".'
+                        except (ValueError, TypeError):
+                            pass
+        except (ValueError, TypeError):
+            return f'El campo "{field.name}" debe tener un formato de fecha válido (AAAA-MM-DD).'
+
+    return None
+
+
 def _validate_record_values(table, fields, values, record_id=None):
     """
     Validates values for a record in a table.
     - Required fields
     - Uniqueness (is_unique or is_primary_key)
     - Relation existence
+    - Advanced Field Constraints
     """
     for f in fields:
         val = values.get(str(f.id))
@@ -298,7 +443,6 @@ def _validate_record_values(table, fields, values, record_id=None):
         if val is not None and str(val).strip() != "":
             # Uniqueness check
             if f.is_unique or f.is_primary_key:
-                # Find other records with the same value for this field
                 others = SystemRecordValue.objects.filter(field=f, value=val).exclude(record_id=record_id)
                 if others.exists():
                     return f'El valor "{val}" ya existe en el campo único "{f.name}".'
@@ -311,6 +455,11 @@ def _validate_record_values(table, fields, values, record_id=None):
                         return f'El registro relacionado con ID {rel_id} no existe en la tabla "{f.related_table.name}".'
                 except (ValueError, TypeError):
                     return f'El valor del campo "{f.name}" debe ser un ID numérico válido.'
+
+            # Advanced JSON Field Constraints Check
+            err = validate_field_constraints(f, val, values)
+            if err:
+                return err
     return None
 
 
@@ -960,6 +1109,7 @@ def _save_fields(table, fields_data, update=False):
             order_index=i,
             related_table_id=related_table_id,
             related_display_field_id=related_display_field_id,
+            constraints_json=json.dumps(fd.get('constraints', {}), ensure_ascii=False),
         )
 
         if fid and update:

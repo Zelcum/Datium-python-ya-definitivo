@@ -1,0 +1,13 @@
+Creating test database for alias 'default'...
+C:\Users\alvar\AppData\Roaming\Python\Python314\site-packages\django\core\handlers\base.py:61: UserWarning: No directory at: C:\Users\alvar\Desktop\Datium-python-ya-definitivo\Datium\staticfiles\
+  mw_instance = middleware(adapted_handler)
+....WARNING 2026-06-30 20:39:09,949 log Bad Request: /api/tables/2572029546/records
+..WARNING 2026-06-30 20:39:17,364 log Bad Request: /api/tables/6263190134/records
+......
+----------------------------------------------------------------------
+Ran 12 tests in 43.982s
+
+OK
+Destroying test database for alias 'default'...
+Found 12 test(s).
+System check identified no issues (0 silenced).

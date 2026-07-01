@@ -160,6 +160,102 @@ async function loadTableData() {
         }
     }
 }
+function getConstraintsTemplate(type) {
+    if (type === 'text') {
+        return `
+            <div class="col-span-1">
+                <label class="font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider block mb-1">Longitud Mínima</label>
+                <input type="number" class="constraint-min-length w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-black/20 text-xs dark:text-white focus:ring-2 focus:ring-primary/50" placeholder="Ej: 5">
+            </div>
+            <div class="col-span-1">
+                <label class="font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider block mb-1">Longitud Máxima</label>
+                <input type="number" class="constraint-max-length w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-black/20 text-xs dark:text-white focus:ring-2 focus:ring-primary/50" placeholder="Ej: 255">
+            </div>
+            <div class="col-span-full">
+                <label class="font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider block mb-1">Patrón Regex</label>
+                <input type="text" class="constraint-pattern w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-black/20 text-xs dark:text-white focus:ring-2 focus:ring-primary/50" placeholder="Ej: ^[A-Za-z]+$">
+            </div>
+        `;
+    }
+    if (type === 'number') {
+        return `
+            <div class="col-span-1">
+                <label class="font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider block mb-1">Valor Mínimo</label>
+                <input type="number" step="any" class="constraint-min-value w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-black/20 text-xs dark:text-white focus:ring-2 focus:ring-primary/50" placeholder="Ej: 0">
+            </div>
+            <div class="col-span-1">
+                <label class="font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider block mb-1">Valor Máximo</label>
+                <input type="number" step="any" class="constraint-max-value w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-black/20 text-xs dark:text-white focus:ring-2 focus:ring-primary/50" placeholder="Ej: 100">
+            </div>
+        `;
+    }
+    if (type === 'email') {
+        return `
+            <div class="col-span-full">
+                <label class="font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider block mb-1">Dominios Permitidos (separados por coma)</label>
+                <input type="text" class="constraint-allowed-domains w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-black/20 text-xs dark:text-white focus:ring-2 focus:ring-primary/50" placeholder="Ej: gmail.com, outlook.com">
+            </div>
+        `;
+    }
+    if (type === 'date') {
+        return `
+            <div class="col-span-1">
+                <label class="font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider block mb-1">Fecha Mínima Fija</label>
+                <input type="date" class="constraint-min-date w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-black/20 text-xs dark:text-white focus:ring-2 focus:ring-primary/50">
+            </div>
+            <div class="col-span-1">
+                <label class="font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider block mb-1">Fecha Máxima Fija</label>
+                <input type="date" class="constraint-max-date w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-750 bg-white dark:bg-black/20 text-xs dark:text-white focus:ring-2 focus:ring-primary/50">
+            </div>
+            <div class="col-span-1">
+                <label class="font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider block mb-1">No menor que el campo</label>
+                <select class="constraint-min-date-field w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-black/20 text-xs dark:text-white focus:ring-2 focus:ring-primary/50">
+                    <option value="">Selecciona campo...</option>
+                </select>
+            </div>
+            <div class="col-span-1">
+                <label class="font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider block mb-1">No mayor que el campo</label>
+                <select class="constraint-max-date-field w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-black/20 text-xs dark:text-white focus:ring-2 focus:ring-primary/50">
+                    <option value="">Selecciona campo...</option>
+                </select>
+            </div>
+        `;
+    }
+    return '';
+}
+
+function populateDateFieldSelects(panelEl, currentFieldName) {
+    const minSelect = panelEl.querySelector('.constraint-min-date-field');
+    const maxSelect = panelEl.querySelector('.constraint-max-date-field');
+    if (!minSelect || !maxSelect) return;
+    
+    const rows = Array.from(document.getElementById('newFieldsContainer').children);
+    const dateFields = rows.map(r => {
+        const nameInput = r.querySelector('.new-field-name');
+        const typeSelect = r.querySelector('.new-field-type');
+        if (!nameInput || !typeSelect) return null;
+        
+        const name = nameInput.value.trim();
+        const type = typeSelect.value;
+        const idInput = r.querySelector('.new-field-id');
+        const fieldVal = (idInput && idInput.value) ? idInput.value : name;
+        
+        if (type === 'date' && name && name.toLowerCase() !== currentFieldName.toLowerCase()) {
+            return { label: name, value: fieldVal };
+        }
+        return null;
+    }).filter(f => f);
+
+    const minSelected = minSelect.value;
+    const maxSelected = maxSelect.value;
+
+    const optHtml = '<option value="">Selecciona campo...</option>' + dateFields.map(f => `<option value="${f.value}">${f.label}</option>`).join('');
+    minSelect.innerHTML = optHtml;
+    maxSelect.innerHTML = optHtml;
+
+    minSelect.value = minSelected;
+    maxSelect.value = maxSelected;
+}
 
 function addNewFieldRow(fieldData = null) {
     const container = document.getElementById('newFieldsContainer');
@@ -170,55 +266,84 @@ function addNewFieldRow(fieldData = null) {
         <div class="drag-handle absolute -left-2 top-1/2 -translate-y-1/2 p-1 text-gray-300 hover:text-primary cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 transition-all">
             <span class="material-symbols-outlined text-lg">drag_indicator</span>
         </div>
-        <div class="flex-1 min-w-[150px]">
-            <input type="text" class="new-field-name w-full px-3 py-2 rounded-lg border-gray-200 dark:border-gray-700 bg-white dark:bg-black/20 text-sm focus:ring-2 focus:ring-primary/50 dark:text-white" placeholder="Nombre Campo" required>
-        </div>
-        <div class="w-[140px]">
-            <select class="new-field-type w-full px-3 py-2 rounded-lg border-gray-200 dark:border-gray-700 bg-white dark:bg-black/20 text-sm focus:ring-2 focus:ring-primary/50 dark:text-white">
-                <option value="text">Texto</option>
-                <option value="number">Número</option>
-                <option value="date">Fecha</option>
-                <option value="boolean">Si/No</option>
-                <option value="select">Lista (Select)</option>
-                <option value="relation">Relación</option>
-                <option value="email">Email</option>
-                <option value="url">URL</option>
-                <option value="phone">Teléfono</option>
-                <option value="time">Hora</option>
-                <option value="file">Archivo</option>
-            </select>
-        </div>
-        
-        <div class="flex-1 min-w-[200px] flex gap-2" >
-             <div class="field-options-container flex-1 hidden">
-                <input type="text" class="new-field-options w-full px-3 py-2 rounded-lg border-gray-200 dark:border-gray-700 bg-white dark:bg-black/20 text-sm dark:text-white" placeholder="Opciones: A, B, C">
+        <div class="flex flex-1 flex-wrap gap-3 items-end w-full">
+            <div class="flex-1 min-w-[150px]">
+                <input type="text" class="new-field-name w-full px-3 py-2 rounded-lg border-gray-200 dark:border-gray-700 bg-white dark:bg-black/20 text-sm focus:ring-2 focus:ring-primary/50 dark:text-white" placeholder="Nombre Campo" required>
             </div>
-            <div class="field-relation-container flex-1 hidden flex-col gap-1">
-                <div class="flex gap-2 w-full">
-                    <select class="new-field-rel-table w-1/2 px-2 py-2 rounded-lg border-gray-200 dark:border-gray-700 bg-white dark:bg-black/20 text-xs dark:text-white">
-                        <option value="">Tabla Destino...</option>
-                        ${systemTables.map(t => `<option value="${t.id}">${t.name}</option>`).join('')}
-                    </select>
-                    <select class="new-field-rel-display w-1/2 px-2 py-2 rounded-lg border-gray-200 dark:border-gray-700 bg-white dark:bg-black/20 text-xs dark:text-white" disabled>
-                        <option value="">Campo Display...</option>
-                    </select>
+            <div class="w-[140px]">
+                <select class="new-field-type w-full px-3 py-2 rounded-lg border-gray-200 dark:border-gray-700 bg-white dark:bg-black/20 text-sm focus:ring-2 focus:ring-primary/50 dark:text-white">
+                    <option value="text">Texto</option>
+                    <option value="number">Número</option>
+                    <option value="date">Fecha</option>
+                    <option value="boolean">Si/No</option>
+                    <option value="select">Lista (Select)</option>
+                    <option value="relation">Relación</option>
+                    <option value="email">Email</option>
+                    <option value="url">URL</option>
+                    <option value="phone">Teléfono</option>
+                    <option value="time">Hora</option>
+                    <option value="file">Archivo</option>
+                </select>
+            </div>
+            
+            <div class="flex-1 min-w-[200px] flex gap-2" >
+                 <div class="field-options-container flex-1 hidden">
+                    <input type="text" class="new-field-options w-full px-3 py-2 rounded-lg border-gray-200 dark:border-gray-700 bg-white dark:bg-black/20 text-sm dark:text-white" placeholder="Opciones: A, B, C">
                 </div>
-                <div class="field-rel-pk-info text-[10px] text-primary italic font-bold px-1 hidden"></div>
+                <div class="field-relation-container flex-1 hidden flex-col gap-1">
+                    <div class="flex gap-2 w-full">
+                        <select class="new-field-rel-table w-1/2 px-2 py-2 rounded-lg border-gray-200 dark:border-gray-700 bg-white dark:bg-black/20 text-xs dark:text-white">
+                            <option value="">Tabla Destino...</option>
+                            ${systemTables.map(t => `<option value="${t.id}">${t.name}</option>`).join('')}
+                        </select>
+                        <select class="new-field-rel-display w-1/2 px-2 py-2 rounded-lg border-gray-200 dark:border-gray-700 bg-white dark:bg-black/20 text-xs dark:text-white" disabled>
+                            <option value="">Campo Display...</option>
+                        </select>
+                    </div>
+                    <div class="field-rel-pk-info text-[10px] text-primary italic font-bold px-1 hidden"></div>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-2 h-10">
+                <label class="flex items-center cursor-pointer" title="Campo Obligatorio">
+                    <input type="checkbox" class="new-field-required form-checkbox rounded text-primary border-gray-300 dark:border-gray-600 bg-transparent focus:ring-0 w-4 h-4">
+                    <span class="ml-2 text-xs text-gray-500 font-medium">Req.</span>
+                </label>
+                <label class="flex items-center cursor-pointer" title="Valor Único">
+                    <input type="checkbox" class="new-field-unique form-checkbox rounded text-blue-500 border-gray-300 dark:border-gray-600 bg-transparent focus:ring-0 w-4 h-4">
+                    <span class="ml-2 text-xs text-gray-500 font-medium">Uniq</span>
+                </label>
+                <button type="button" class="btn-config-constraints p-2 text-gray-400 hover:text-primary transition-colors flex items-center justify-center" title="Configurar Restricciones Avanzadas">
+                    <span class="material-symbols-outlined text-lg">settings</span>
+                </button>
+                <button type="button" onclick="const row = this.closest('.bg-gray-50'); row.style.opacity = '0'; setTimeout(() => row.remove(), 300);" class="p-2 text-gray-400 hover:text-red-500 transition-colors" title="Eliminar campo">
+                    <span class="material-symbols-outlined text-lg">delete</span>
+                </button>
             </div>
         </div>
 
-        <div class="flex items-center gap-2 h-10">
-            <label class="flex items-center cursor-pointer" title="Campo Obligatorio">
-                <input type="checkbox" class="new-field-required form-checkbox rounded text-primary border-gray-300 dark:border-gray-600 bg-transparent focus:ring-0 w-4 h-4">
-                <span class="ml-2 text-xs text-gray-500 font-medium">Req.</span>
-            </label>
-            <label class="flex items-center cursor-pointer" title="Valor Único">
-                <input type="checkbox" class="new-field-unique form-checkbox rounded text-blue-500 border-gray-300 dark:border-gray-600 bg-transparent focus:ring-0 w-4 h-4">
-                <span class="ml-2 text-xs text-gray-500 font-medium">Uniq</span>
-            </label>
-            <button type="button" onclick="const row = this.closest('.bg-gray-50'); row.style.opacity = '0'; setTimeout(() => row.remove(), 300);" class="p-2 text-gray-400 hover:text-red-500 transition-colors" title="Eliminar campo">
-                <span class="material-symbols-outlined text-lg">delete</span>
-            </button>
+        <div class="w-full mt-3 hidden border-t border-gray-200 dark:border-gray-800 pt-3 field-constraints-panel bg-white/50 dark:bg-black/25 p-3 rounded-lg text-xs grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div class="col-span-full font-semibold text-gray-700 dark:text-gray-300 border-b border-gray-100 dark:border-gray-800 pb-1 flex items-center gap-1">
+                <span class="material-symbols-outlined text-sm text-primary">rule</span> Restricciones & Opciones de Visualización
+            </div>
+            <div class="col-span-1">
+                <label class="font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider block mb-1">Texto de Ayuda (Tooltip/Help)</label>
+                <input type="text" class="constraint-help-text w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-black/20 text-xs dark:text-white focus:ring-2 focus:ring-primary/50" placeholder="Ej: Solo números positivos">
+            </div>
+            <div class="col-span-1">
+                <label class="font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider block mb-1">Placeholder (Marca de agua)</label>
+                <input type="text" class="constraint-placeholder w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-black/20 text-xs dark:text-white focus:ring-2 focus:ring-primary/50" placeholder="Ej: Ingresa tu valor...">
+            </div>
+            <div class="col-span-full flex items-center mt-1">
+                <label class="flex items-center cursor-pointer font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    <input type="checkbox" class="constraint-read-only form-checkbox rounded text-primary border-gray-300 dark:border-gray-600 bg-transparent focus:ring-0 w-4 h-4 mr-2">
+                    Solo Lectura (Deshabilitar edición externa)
+                </label>
+            </div>
+            
+            <div class="col-span-full grid grid-cols-1 md:grid-cols-2 gap-3 constraint-type-specific-container border-t border-gray-100 dark:border-gray-800 pt-3">
+                <!-- Loaded dynamically by toggleType -->
+            </div>
         </div>
     `;
 
@@ -230,6 +355,9 @@ function addNewFieldRow(fieldData = null) {
     const optionsInput = div.querySelector('.new-field-options');
     const nameInput = div.querySelector('.new-field-name');
     const requiredCheck = div.querySelector('.new-field-required');
+
+    const btnConfig = div.querySelector('.btn-config-constraints');
+    const constraintsPanel = div.querySelector('.field-constraints-panel');
 
     const toggleType = (type) => {
         optionsDiv.classList.add('hidden');
@@ -243,9 +371,33 @@ function addNewFieldRow(fieldData = null) {
             relationDiv.classList.remove('hidden');
             relationDiv.classList.add('flex');
         }
+
+        const typeSpecificContainer = constraintsPanel.querySelector('.constraint-type-specific-container');
+        if (typeSpecificContainer) {
+            typeSpecificContainer.innerHTML = getConstraintsTemplate(type);
+        }
     };
 
-    select.addEventListener('change', (e) => toggleType(e.target.value));
+    select.addEventListener('change', (e) => {
+        toggleType(e.target.value);
+        if (constraintsPanel && !constraintsPanel.classList.contains('hidden')) {
+            if (e.target.value === 'date') {
+                populateDateFieldSelects(constraintsPanel, nameInput.value);
+            }
+        }
+    });
+
+    btnConfig.addEventListener('click', () => {
+        const isHidden = constraintsPanel.classList.contains('hidden');
+        if (isHidden) {
+            constraintsPanel.classList.remove('hidden');
+            if (select.value === 'date') {
+                populateDateFieldSelects(constraintsPanel, nameInput.value);
+            }
+        } else {
+            constraintsPanel.classList.add('hidden');
+        }
+    });
 
     const loadRelFields = async (tId, selectedFieldId = null) => {
         if (!tId) return;
@@ -294,6 +446,44 @@ function addNewFieldRow(fieldData = null) {
                 });
         }
 
+        // Populate constraints values
+        if (fieldData.constraints) {
+            const c = fieldData.constraints;
+            const helpEl = constraintsPanel.querySelector('.constraint-help-text');
+            const placeholderEl = constraintsPanel.querySelector('.constraint-placeholder');
+            const readOnlyEl = constraintsPanel.querySelector('.constraint-read-only');
+            if (helpEl) helpEl.value = c.help_text || '';
+            if (placeholderEl) placeholderEl.value = c.placeholder || '';
+            if (readOnlyEl) readOnlyEl.checked = !!c.read_only;
+
+            if (fieldData.type === 'text') {
+                const minLen = constraintsPanel.querySelector('.constraint-min-length');
+                const maxLen = constraintsPanel.querySelector('.constraint-max-length');
+                const pattern = constraintsPanel.querySelector('.constraint-pattern');
+                if (minLen) minLen.value = c.min_length !== undefined ? c.min_length : '';
+                if (maxLen) maxLen.value = c.max_length !== undefined ? c.max_length : '';
+                if (pattern) pattern.value = c.pattern || '';
+            } else if (fieldData.type === 'number') {
+                const minVal = constraintsPanel.querySelector('.constraint-min-value');
+                const maxVal = constraintsPanel.querySelector('.constraint-max-value');
+                if (minVal) minVal.value = c.min_value !== undefined ? c.min_value : '';
+                if (maxVal) maxVal.value = c.max_value !== undefined ? c.max_value : '';
+            } else if (fieldData.type === 'email') {
+                const domains = constraintsPanel.querySelector('.constraint-allowed-domains');
+                if (domains) domains.value = c.allowed_domains ? (Array.isArray(c.allowed_domains) ? c.allowed_domains.join(', ') : c.allowed_domains) : '';
+            } else if (fieldData.type === 'date') {
+                populateDateFieldSelects(constraintsPanel, fieldData.name);
+                const minDate = constraintsPanel.querySelector('.constraint-min-date');
+                const maxDate = constraintsPanel.querySelector('.constraint-max-date');
+                const minDateField = constraintsPanel.querySelector('.constraint-min-date-field');
+                const maxDateField = constraintsPanel.querySelector('.constraint-max-date-field');
+                if (minDate) minDate.value = c.min_date || '';
+                if (maxDate) maxDate.value = c.max_date || '';
+                if (minDateField) minDateField.value = c.min_date_field || '';
+                if (maxDateField) maxDateField.value = c.max_date_field || '';
+            }
+        }
+
         const idInput = document.createElement('input');
         idInput.type = 'hidden';
         idInput.className = 'new-field-id';
@@ -303,6 +493,8 @@ function addNewFieldRow(fieldData = null) {
         if (fieldData.is_unique) {
             div.querySelector('.new-field-unique').checked = true;
         }
+    } else {
+        toggleType('text'); // default type specific setup
     }
 }
 
@@ -339,6 +531,47 @@ async function saveTable() {
             if (fId) relatedDisplayFieldId = parseInt(fId);
         }
 
+        // Serialize constraints
+        const cPanel = row.querySelector('.field-constraints-panel');
+        const constraints = {};
+        if (cPanel) {
+            const helpVal = cPanel.querySelector('.constraint-help-text').value.trim();
+            const phVal = cPanel.querySelector('.constraint-placeholder').value.trim();
+            const roVal = cPanel.querySelector('.constraint-read-only').checked;
+            if (helpVal) constraints.help_text = helpVal;
+            if (phVal) constraints.placeholder = phVal;
+            if (roVal) constraints.read_only = true;
+
+            const tSpecific = cPanel.querySelector('.constraint-type-specific-container');
+            if (tSpecific) {
+                if (type === 'text') {
+                    const minLen = tSpecific.querySelector('.constraint-min-length').value.trim();
+                    const maxLen = tSpecific.querySelector('.constraint-max-length').value.trim();
+                    const pattern = tSpecific.querySelector('.constraint-pattern').value.trim();
+                    if (minLen) constraints.min_length = parseInt(minLen);
+                    if (maxLen) constraints.max_length = parseInt(maxLen);
+                    if (pattern) constraints.pattern = pattern;
+                } else if (type === 'number') {
+                    const minVal = tSpecific.querySelector('.constraint-min-value').value.trim();
+                    const maxVal = tSpecific.querySelector('.constraint-max-value').value.trim();
+                    if (minVal) constraints.min_value = parseFloat(minVal);
+                    if (maxVal) constraints.max_value = parseFloat(maxVal);
+                } else if (type === 'email') {
+                    const domains = tSpecific.querySelector('.constraint-allowed-domains').value.trim();
+                    if (domains) constraints.allowed_domains = domains.split(',').map(d => d.trim()).filter(d => d);
+                } else if (type === 'date') {
+                    const minDate = tSpecific.querySelector('.constraint-min-date').value;
+                    const maxDate = tSpecific.querySelector('.constraint-max-date').value;
+                    const minDateField = tSpecific.querySelector('.constraint-min-date-field').value;
+                    const maxDateField = tSpecific.querySelector('.constraint-max-date-field').value;
+                    if (minDate) constraints.min_date = minDate;
+                    if (maxDate) constraints.max_date = maxDate;
+                    if (minDateField) constraints.min_date_field = minDateField;
+                    if (maxDateField) constraints.max_date_field = maxDateField;
+                }
+            }
+        }
+
         return {
             id: fieldId,
             name: nameInput.value,
@@ -348,7 +581,8 @@ async function saveTable() {
             orderIndex: Array.from(fieldRows).indexOf(row),
             options: options,
             relatedTableId: relatedTableId,
-            relatedDisplayFieldId: relatedDisplayFieldId
+            relatedDisplayFieldId: relatedDisplayFieldId,
+            constraints: constraints
         };
     }).filter(f => f);
 

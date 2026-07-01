@@ -303,7 +303,121 @@ function closeRegisterModal() {
     editingRecordId = null;
 }
 
+function validateClientConstraints() {
+    for (const f of currentFields) {
+        const el = document.getElementById(`modal_field_${f.id}`);
+        if (!el) continue;
+        const val = el.value;
+        const constraints = f.constraints || {};
+
+        if (f.required && (val === null || val === undefined || val.trim() === "")) {
+            return `El campo "${f.name}" es obligatorio.`;
+        }
+
+        if (val !== null && val !== undefined && val.trim() !== "") {
+            const valStr = val.trim();
+
+            if (f.type === 'text') {
+                if (constraints.min_length !== undefined && valStr.length < constraints.min_length) {
+                    return `El campo "${f.name}" debe tener al menos ${constraints.min_length} caracteres.`;
+                }
+                if (constraints.max_length !== undefined && valStr.length > constraints.max_length) {
+                    return `El campo "${f.name}" no puede tener más de ${constraints.max_length} caracteres.`;
+                }
+                if (constraints.pattern) {
+                    try {
+                        const rx = new RegExp(constraints.pattern);
+                        if (!rx.test(valStr)) {
+                            return `El campo "${f.name}" no coincide con el formato requerido.`;
+                        }
+                    } catch (e) {
+                        console.error('Invalid regex pattern:', constraints.pattern);
+                    }
+                }
+            }
+
+            if (f.type === 'number') {
+                const num = parseFloat(valStr);
+                if (isNaN(num)) {
+                    return `El campo "${f.name}" debe ser un número válido.`;
+                }
+                if (constraints.min_value !== undefined && num < constraints.min_value) {
+                    return `El campo "${f.name}" debe ser mayor o igual a ${constraints.min_value}.`;
+                }
+                if (constraints.max_value !== undefined && num > constraints.max_value) {
+                    return `El campo "${f.name}" debe ser menor o igual a ${constraints.max_value}.`;
+                }
+            }
+
+            if (f.type === 'email') {
+                let allowed = constraints.allowed_domains;
+                if (allowed) {
+                    if (typeof allowed === 'string') {
+                        allowed = allowed.split(',').map(d => d.trim().toLowerCase()).filter(d => d);
+                    } else if (Array.isArray(allowed)) {
+                        allowed = allowed.map(d => d.toLowerCase());
+                    }
+                    if (allowed && allowed.length > 0) {
+                        const domain = valStr.split('@').pop().toLowerCase();
+                        if (!allowed.includes(domain)) {
+                            return `El campo "${f.name}" debe pertenecer a uno de los dominios permitidos: ${allowed.join(', ')}.`;
+                        }
+                    }
+                }
+            }
+
+            if (f.type === 'date') {
+                const curDate = new Date(valStr);
+                if (constraints.min_date) {
+                    const minD = new Date(constraints.min_date);
+                    if (curDate < minD) {
+                        return `La fecha del campo "${f.name}" no puede ser anterior a ${constraints.min_date}.`;
+                    }
+                }
+                if (constraints.max_date) {
+                    const maxD = new Date(constraints.max_date);
+                    if (curDate > maxD) {
+                        return `La fecha del campo "${f.name}" no puede ser posterior a ${constraints.max_date}.`;
+                    }
+                }
+
+                // Cross-field date constraints
+                if (constraints.min_date_field) {
+                    const otherField = currentFields.find(o => String(o.id) === String(constraints.min_date_field) || o.name === constraints.min_date_field);
+                    if (otherField) {
+                        const otherEl = document.getElementById(`modal_field_${otherField.id}`);
+                        if (otherEl && otherEl.value) {
+                            if (new Date(valStr) < new Date(otherEl.value)) {
+                                return `La fecha de "${f.name}" no puede ser anterior a la de "${otherField.name}".`;
+                            }
+                        }
+                    }
+                }
+
+                if (constraints.max_date_field) {
+                    const otherField = currentFields.find(o => String(o.id) === String(constraints.max_date_field) || o.name === constraints.max_date_field);
+                    if (otherField) {
+                        const otherEl = document.getElementById(`modal_field_${otherField.id}`);
+                        if (otherEl && otherEl.value) {
+                            if (new Date(valStr) > new Date(otherEl.value)) {
+                                return `La fecha de "${f.name}" no puede ser posterior a la de "${otherField.name}".`;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    return null;
+}
+
 async function saveRecord() {
+    const clientErr = validateClientConstraints();
+    if (clientErr) {
+        showError(clientErr);
+        return;
+    }
+
     const fieldValues = {};
     currentFields.forEach(f => {
         const el = document.getElementById(`modal_field_${f.id}`);
@@ -372,13 +486,38 @@ async function renderModalFields() {
     const htmlPromises = currentFields.map(async f => {
         let inputHtml = '';
         const baseInputClass = "w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all dark:text-white placeholder-gray-400";
+        const c = f.constraints || {};
+        
+        const roAttr = c.read_only ? (f.type === 'select' || f.type === 'boolean' || f.type === 'relation' ? 'disabled' : 'readonly') : '';
+        const roClass = c.read_only ? 'bg-gray-100 dark:bg-gray-800 cursor-not-allowed opacity-75' : '';
 
-        // Auto-increment removed — #ID is always SystemRecord.id
+        // Generate type specific validation tags
+        let extraAttrs = '';
+        if (f.type === 'text') {
+            if (c.min_length !== undefined) extraAttrs += ` minlength="${c.min_length}"`;
+            if (c.max_length !== undefined) extraAttrs += ` maxlength="${c.max_length}"`;
+            if (c.pattern) extraAttrs += ` pattern="${c.pattern}"`;
+        } else if (f.type === 'number') {
+            if (c.min_value !== undefined) extraAttrs += ` min="${c.min_value}"`;
+            if (c.max_value !== undefined) extraAttrs += ` max="${c.max_value}"`;
+        } else if (f.type === 'date') {
+            if (c.min_date) extraAttrs += ` min="${c.min_date}"`;
+            if (c.max_date) extraAttrs += ` max="${c.max_date}"`;
+        }
+
+        const helpHtml = c.help_text ? `
+            <p class="text-[11px] text-gray-400 dark:text-gray-500 mt-1 flex items-center gap-1 font-medium">
+                <span class="material-symbols-outlined text-[12px]">info</span> ${c.help_text}
+            </p>
+        ` : '';
+
+        const ph = c.placeholder || f.name;
+
         if (f.type === 'select') {
             const opts = f.options || [];
             inputHtml = `
                 <div class="relative">
-                    <select id="modal_field_${f.id}" class="${baseInputClass} appearance-none cursor-pointer">
+                    <select id="modal_field_${f.id}" class="${baseInputClass} ${roClass} appearance-none cursor-pointer" ${roAttr}>
                         <option value="">Seleccionar...</option>
                         ${opts.map(opt => `<option value="${opt}">${opt}</option>`).join('')}
                     </select>
@@ -390,7 +529,7 @@ async function renderModalFields() {
         } else if (f.type === 'boolean') {
             inputHtml = `
                 <div class="relative">
-                    <select id="modal_field_${f.id}" class="${baseInputClass} appearance-none cursor-pointer">
+                    <select id="modal_field_${f.id}" class="${baseInputClass} ${roClass} appearance-none cursor-pointer" ${roAttr}>
                         <option value="">Seleccionar...</option>
                         <option value="true">Sí</option>
                         <option value="false">No</option>
@@ -412,12 +551,10 @@ async function renderModalFields() {
                             const recs = await recsRes.json();
                             const map = {};
                             recs.forEach(r => {
-                                // Build '#ID - first_text_value' label
                                 const firstVal = r.fieldValues
                                     ? Object.values(r.fieldValues).find(v => v && v.toString().trim())
                                     : null;
                                 const label = firstVal ? `#${r.id} - ${firstVal}` : `#${r.id}`;
-                                // Also check if a specific display field was configured
                                 const displayLabel = f.relatedFieldName && r.fieldValues[f.relatedFieldName]
                                     ? `#${r.id} - ${r.fieldValues[f.relatedFieldName]}`
                                     : label;
@@ -441,8 +578,8 @@ async function renderModalFields() {
 
             inputHtml = `
                 <div class="relative relation-search-container">
-                    <input type="text" class="${baseInputClass} ${isEmpty ? 'bg-gray-100 dark:bg-gray-800 cursor-not-allowed' : ''}" 
-                           id="search_modal_field_${f.id}" placeholder="${placeholder}" ${disabledAttr}
+                    <input type="text" class="${baseInputClass} ${isEmpty || c.read_only ? 'bg-gray-100 dark:bg-gray-800 cursor-not-allowed opacity-75' : ''}" 
+                           id="search_modal_field_${f.id}" placeholder="${placeholder}" ${disabledAttr || roAttr}
                            autocomplete="off" onfocus="showRelationOptions(${f.id})" 
                            oninput="filterRelationOptions(${f.id})" 
                            onblur="setTimeout(() => hideRelationOptions(${f.id}), 200)">
@@ -453,19 +590,62 @@ async function renderModalFields() {
                 </div>
             `;
         } else {
-            inputHtml = `<input type="${getInputType(f.type)}" id="modal_field_${f.id}" class="${baseInputClass}" placeholder="${f.name}">`;
+            inputHtml = `<input type="${getInputType(f.type)}" id="modal_field_${f.id}" class="${baseInputClass} ${roClass}" placeholder="${ph}" ${roAttr} ${extraAttrs}>`;
         }
 
         return `
             <div class="col-span-1">
-                <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest mb-1">${f.name}</label>
+                <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest mb-1 flex items-center justify-between">
+                    <span>${f.name}</span>
+                    ${c.read_only ? '<span class="material-symbols-outlined text-xs text-gray-400 font-bold" title="Solo lectura">lock</span>' : ''}
+                </label>
                 ${inputHtml}
+                ${helpHtml}
             </div>
         `;
     });
 
     const htmlParts = await Promise.all(htmlPromises);
     container.innerHTML = htmlParts.join('');
+
+    // Hook up reactive cross-field date bounds in UI
+    currentFields.forEach(f => {
+        if (f.type === 'date' && f.constraints) {
+            const minFieldId = f.constraints.min_date_field;
+            const maxFieldId = f.constraints.max_date_field;
+            const el = document.getElementById(`modal_field_${f.id}`);
+            if (!el) return;
+
+            if (minFieldId) {
+                const otherField = currentFields.find(o => String(o.id) === String(minFieldId) || o.name === minFieldId);
+                if (otherField) {
+                    const otherEl = document.getElementById(`modal_field_${otherField.id}`);
+                    if (otherEl) {
+                        otherEl.addEventListener('change', () => {
+                            el.min = otherEl.value;
+                        });
+                        if (otherEl.value) {
+                            el.min = otherEl.value;
+                        }
+                    }
+                }
+            }
+            if (maxFieldId) {
+                const otherField = currentFields.find(o => String(o.id) === String(maxFieldId) || o.name === maxFieldId);
+                if (otherField) {
+                    const otherEl = document.getElementById(`modal_field_${otherField.id}`);
+                    if (otherEl) {
+                        otherEl.addEventListener('change', () => {
+                            el.max = otherEl.value;
+                        });
+                        if (otherEl.value) {
+                            el.max = otherEl.value;
+                        }
+                    }
+                }
+            }
+        }
+    });
 }
 
 function showRelationOptions(fieldId) {

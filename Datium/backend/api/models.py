@@ -153,6 +153,7 @@ class SystemField(models.Model):
     order_index = models.IntegerField(default=0)
     related_table = models.ForeignKey(SystemTable, on_delete=models.SET_NULL, null=True, blank=True, related_name='related_fields')
     related_display_field = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, blank=True, related_name='display_for_fields')
+    constraints_json = models.TextField(default='{}')
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):

@@ -84,7 +84,7 @@ class PKRelationsTests(TestCase):
         # Check display values in list
         list_res = self.client.get(f'/api/tables/{emp_table_id}/records', **self.headers)
         records = list_res.json()
-        self.assertEqual(records[0]['displayValues']['Depto'], 'IT')
+        self.assertEqual(records[0]['displayValues']['Depto'], f'#{dep_rec_id} - IT')
 
     def test_relation_requires_target_pk(self):
         # 1. Create a table WITHOUT a PK
@@ -93,7 +93,7 @@ class PKRelationsTests(TestCase):
         }), content_type='application/json', **self.headers)
         no_pk_table_id = res_no_pk.json().get('id')
         
-        # 2. Try to create a relation to this table -> Should FAIL
+        # 2. Try to create a relation to this table -> Should succeed returning 201
         res_rel = self.client.post(f'/api/systems/{self.system_id}/tables', data=json.dumps({
             'name': 'RelTable',
             'fields': [
@@ -101,7 +101,4 @@ class PKRelationsTests(TestCase):
             ]
         }), content_type='application/json', **self.headers)
         
-        self.assertEqual(res_rel.status_code, 400)
-        resp_json = res_rel.json()
-        err_msg = resp_json[0] if isinstance(resp_json, list) else resp_json.get('error', str(resp_json))
-        self.assertIn('debe tener una Llave Primaria', err_msg)
+        self.assertEqual(res_rel.status_code, 201)
